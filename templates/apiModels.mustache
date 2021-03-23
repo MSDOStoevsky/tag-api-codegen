@@ -1,0 +1,45 @@
+// NOTE: This is generated code and should NOT be edited for any reason.
+// If an error occurs with the generated code, submit a PR into 
+// https://github.com/MSDOStoevsky/tag-api-codegen, or alter the 
+// project locally if forked.
+
+import * as ApiModelTypes from "./apiModelTypes";
+
+/**
+ * The runtime-level field metadata.
+ */
+interface FieldConfig {
+    /**
+     * The default value.
+     */
+    default: number | string | [] | Record<string, unknown>;
+    /**
+     * The minumum value of the field.
+     * Undefined if there is no minimum.
+     */
+    minimum: number | undefined;
+    /**
+     * The maximum value of the field.
+     * Undefined if there is no maximum.
+     */
+    maximum: number | undefined;
+}
+
+{{#MODELS}}
+/**
+ * {{MODEL_DESCRIPTION}}
+ */
+export const {{MODEL_NAME}}: Record<keyof ApiModelTypes.{{MODEL_NAME}}, FieldConfig> = {
+    {{#MODEL_PROPERTIES}}
+    /**
+     * {@see ApiModelTypes.{{MODEL_NAME}}.{{PROPERTY_NAME}}}
+     */
+    {{PROPERTY_NAME}}: {
+        default: {{{PROPERTY_DEFAULT}}},
+        minimum: {{PROPERTY_MINIMUM}},
+        maximum: {{PROPERTY_MAXIMUM}}
+    },
+    {{/MODEL_PROPERTIES}}
+}
+
+{{/MODELS}}

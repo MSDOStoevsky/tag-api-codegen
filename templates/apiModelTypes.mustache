@@ -1,0 +1,19 @@
+// NOTE: This is generated code and should NOT be edited for any reason.
+// If an error occurs with the generated code, submit a PR into 
+// https://github.com/MSDOStoevsky/tag-api-codegen, or alter the 
+// project locally if forked.
+
+{{#MODELS}}
+/**
+ * {{MODEL_DESCRIPTION}}
+ */
+export interface {{MODEL_NAME}} {
+    {{#MODEL_PROPERTIES}}
+    /**
+     * {{PROPERTY_DESCRIPTION}}
+     */
+    {{PROPERTY_NAME}}: {{{PROPERTY_TYPE}}};
+    {{/MODEL_PROPERTIES}}
+}
+
+{{/MODELS}}

@@ -1,0 +1,27 @@
+{
+	"name": "tag-api-codegen",
+	"version": "0.0.1",
+	"description": "An extremely simple frontend typescript api code generator for the openapi spec",
+	"main": "./index.js",
+	"repository": "https://github.com/MSDOStoevsky/tag-api-codegen.git",
+	"author": {
+		"name": "Dylan Lettinga",
+		"email": "msdostoevsky@protonmail.com",
+		"url": "https://github.com/MSDOStoevsky/"
+	},
+	"license": "MIT",
+	"bin": {
+		"taggem": "./cli.js"
+	},
+	"dependencies": {
+		"js-yaml": "4.0.0",
+		"lodash": "4.17.21",
+		"mustache": "4.1.0",
+		"typescript": "4.2.3",
+		"yargs": "16.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "14.14.35",
+		"@types/yargs": "16.0.0"
+	}
+}

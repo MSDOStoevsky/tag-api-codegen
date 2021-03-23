@@ -1,0 +1,39 @@
+// NOTE: This is generated code and should NOT be edited for any reason.
+// If an error occurs with the generated code, submit a PR into 
+// https://github.com/MSDOStoevsky/tag-api-codegen or alter the 
+// project locally if forked.
+
+/**
+ * The service base path.
+ */
+const BASE_PATH = `{{BASE_PATH}}/`;
+
+{{#FUNCTIONS}}
+/**
+ * {{FUNCTION_SUMMARY}}
+{{#FUNCTION_PARAMS}}
+ * @param {{FUNCTION_PARAM}} - {{FUNCTION_PARAM_DESCRIPTION}}
+{{/FUNCTION_PARAMS}}
+ * @returns api request configuration data.
+ */
+export function {{FUNCTION_NAME}}({{#FUNCTION_PARAMS}}{{FUNCTION_PARAM}}: {{FUNCTION_PARAM_TYPE}},{{/FUNCTION_PARAMS}}): ApiRequestConfig {
+	return {
+		path: `{{{REQUEST_PATH}}}`,
+		method: "{{REQUEST_METHOD}}"
+	};
+}
+
+{{/FUNCTIONS}}
+/**
+ * Configuration data to form an api request around this path.
+ */
+interface ApiRequestConfig {
+	/**
+	 * The api endpoint path.
+	 */
+	path: string;
+	/**
+	 * The HTTP request method.
+	 */
+	method: "get" | "post" | "delete" | "patch" | "put";
+}
