@@ -2,6 +2,7 @@
 // If an error occurs with the generated code, submit a PR into 
 // https://github.com/MSDOStoevsky/tag-api-codegen, or alter the 
 // project locally if forked.
+/* eslint-disable  @typescript-eslint/no-empty-interface */
 
 {{#MODELS}}
 /**
@@ -17,3 +18,15 @@ export interface {{MODEL_NAME}} {
 }
 
 {{/MODELS}}
+
+{{#ENUMS}}
+/**
+ * {{ENUM_DESCRIPTION}}
+ */
+export enum {{ENUM_NAME}} {
+    {{#ENUM_ENTRIES}}
+    "{{{ENUM_KEY}}}"={{{ENUM_VALUE}}},
+    {{/ENUM_ENTRIES}}
+}
+
+{{/ENUMS}}

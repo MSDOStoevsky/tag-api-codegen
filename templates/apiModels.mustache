@@ -82,6 +82,6 @@ export const {{MODEL_NAME}}: Record<keyof ApiModelTypes.{{MODEL_NAME}}, FieldCon
         options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}"{{.}}",{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
     },
     {{/MODEL_PROPERTIES}}
-}
+};
 
 {{/MODELS}}

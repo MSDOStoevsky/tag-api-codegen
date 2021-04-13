@@ -3,7 +3,7 @@ info:
     title: Ada Api
     version: 1.0.0
 servers:
-    - url: "https://api.dev.alldataapp.com/"
+    - url: https://api.dev.alldataapp.com/
 tags:
     - name: Authentication Service
       description: Operations for user authentication
@@ -22,9 +22,8 @@ tags:
     - name: Synthetic Service
       description: Synthetic operations
 x-amazon-apigateway-api-key-source: HEADER
-basePath: /v1
 paths:
-    /admin/ada-cost-calc:
+    /v1/admin/ada-cost-calc:
         post:
             responses:
                 "200":
@@ -33,7 +32,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /admin/process/smart-trac-ftp-file:
+    /v1/admin/process/smart-trac-ftp-file:
         get:
             responses:
                 "200":
@@ -42,7 +41,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /auth/token:
+    /v1/auth/token:
         post:
             operationId: postAuthToken
             summary: Retrieve the bearer token
@@ -63,7 +62,7 @@ paths:
             security:
                 - api_key: []
                 - basic_auth: []
-    /docs/openapi:
+    /v1/docs/openapi:
         get:
             operationId: getApi
             responses:
@@ -72,7 +71,7 @@ paths:
                     content: {}
             security:
                 - api_key: []
-    /user/group:
+    /v1/user/group:
         get:
             operationId: getGroups
             summary: Get all groups
@@ -90,6 +89,12 @@ paths:
             summary: Creates a new group
             tags:
                 - User Management Service
+            requestBody:
+                description: The search request payload.
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreateGroupRequest"
             responses:
                 "200":
                     description: 200 response
@@ -100,9 +105,9 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/group/iam-policy:
+    /v1/user/group/iam-policy:
         get:
-            operationId: getIamPolicy
+            operationId: getIamPolicies
             summary: Get all policies associated with ADA groups/roles
             tags:
                 - User Management Service
@@ -113,7 +118,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/GetIamPoliciesReponse"
-    /user/group/{groupId}/{userId}:
+    /v1/user/group/{groupId}/{userId}:
         delete:
             operationId: deleteUserFromGroup
             summary: Remove user from a group
@@ -143,7 +148,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/group/{groupId}:
+    /v1/user/group/{groupId}:
         post:
             operationId: addUserToGroup
             summary: Add a user to a group
@@ -177,7 +182,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/search:
+    /v1/user/search:
         post:
             operationId: searchUsers
             summary: Search users
@@ -199,7 +204,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/me:
+    /v1/user/me:
         get:
             operationId: getMe
             summary: Get the user data of the calling user
@@ -215,7 +220,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user:
+    /v1/user:
         post:
             operationId: createUser
             summary: Create a single user
@@ -237,7 +242,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/{userId}:
+    /v1/user/{userId}:
         get:
             operationId: getUser
             summary: Get a single user
@@ -259,7 +264,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /user/{userId}/group:
+    /v1/user/{userId}/group:
         get:
             operationId: getUserGroups
             summary: Get all groups that a user belongs to
@@ -281,23 +286,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /policy:
-        get:
-            operationId: getPolicies
-            summary: Get all policies
-            deprecated: true
-            tags:
-                - Policy Service
-            responses:
-                "200":
-                    description: 200 response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/GetPoliciesResponse"
-            security:
-                - AdaApiAuthorizer: []
-                - api_key: []
+    /v1/policy:
         post:
             operationId: createPolicy
             summary: Create a new policy
@@ -308,8 +297,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            oneOf:
-                                - $ref: "#/components/schemas/CreatePolicyRequest"
+                            $ref: "#/components/schemas/CreatePolicyRequest"
                 required: true
             responses:
                 "200":
@@ -346,7 +334,7 @@ paths:
                 - AdaApiAuthorizer: []
                 - api_key: []
             x-codegen-request-body-name: body
-    /policy/{id}:
+    /v1/policy/{id}:
         get:
             operationId: getPolicy
             summary: Get a single policy
@@ -371,7 +359,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /policy/merge:
+    /v1/policy/merge:
         post:
             operationId: mergePolicy
             responses:
@@ -381,17 +369,22 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /policy/remerge:
+    /v1/policy/remerge:
         post:
             operationId: remergePolicy
+            x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                    Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PolicyReMergeLambda.Arn}/invocations
             responses:
-                "200":
+                200:
                     description: 200 response
                     content: {}
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /policy/search:
+    /v1/policy/search:
         post:
             operationId: searchPolicies
             summary: Search the policies table
@@ -413,24 +406,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin:
-        get:
-            operationId: getVins
-            deprecated: true
-            summary: Get all vins
-            tags:
-                - Vin Profile Service
-            responses:
-                "200":
-                    description: 200 response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: "#/components/schemas/ApiMultipleItemResponse"
-            security:
-                - AdaApiAuthorizer: []
-                - api_key: []
-    /vin/search:
+    /v1/vin/search:
         post:
             operationId: searchVins
             summary: Search the vin profile table
@@ -448,11 +424,11 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: "#/components/schemas/ApiPaginatedSearchResponse"
+                                $ref: "#/components/schemas/VinSearchResponse"
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/features:
+    /v1/vin/features:
         post:
             operationId: createVinFeatures
             summary: Create vehicle features
@@ -495,7 +471,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/policy/assign:
+    /v1/vin/policy/assign:
         post:
             operationId: assignPolicies
             summary: Assign policies to multiple vins
@@ -517,7 +493,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/policy/refresh:
+    /v1/vin/policy/refresh:
         post:
             operationId: refreshPolicies
             summary: Refresh the policy used by the provided vins
@@ -544,7 +520,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/policy/schedule:
+    /v1/vin/policy/schedule:
         post:
             operationId: schedulePolicies
             summary: Schedule a policy to run for provided vins
@@ -567,7 +543,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/policy/unschedule:
+    /v1/vin/policy/unschedule:
         post:
             operationId: unschedulePolicies
             summary: Unschedule policies for all provided vins
@@ -595,7 +571,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/{vin}:
+    /v1/vin/{vin}:
         get:
             operationId: getVin
             summary: Get the details of this vin profile
@@ -643,7 +619,7 @@ paths:
                 - AdaApiAuthorizer: []
                 - api_key: []
             x-codegen-request-body-name: body
-    /vin/{vin}/schedule:
+    /v1/vin/{vin}/schedule:
         get:
             operationId: getVinSchedules
             summary: Gets the scheduled policy for this vin
@@ -665,7 +641,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/{vin}/data/lastknown:
+    /v1/vin/{vin}/data/lastknown:
         get:
             operationId: getVinLastKnown
             summary: Gets the last known data for this vin
@@ -687,7 +663,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /vin/{vin}/data:
+    /v1/vin/{vin}/data:
         get:
             operationId: getVinData
             summary: Gets 24 hour data for this vin
@@ -709,7 +685,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /sensor:
+    /v1/sensor:
         get:
             operationId: getSensors
             summary: Gets all sensors
@@ -725,7 +701,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /histogram:
+    /v1/histogram:
         get:
             operationId: getHistograms
             summary: Gets all histograms
@@ -742,7 +718,7 @@ paths:
                 - AdaApiAuthorizer: []
                 - api_key: []
         post:
-            operationId: createHistograms
+            operationId: createHistogram
             summary: Create a new histogram
             tags:
                 - Histogram Service
@@ -761,7 +737,7 @@ paths:
                 - AdaApiAuthorizer: []
                 - api_key: []
             x-codegen-request-body-name: body
-    /histogram/{histogramId}:
+    /v1/histogram/{histogramId}:
         get:
             operationId: getHistogram
             summary: Get a single histogram
@@ -784,7 +760,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /witech:
+    /v1/witech:
         post:
             responses:
                 "200":
@@ -793,7 +769,7 @@ paths:
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
-    /ondemand:
+    /v1/ondemand:
         post:
             operationId: sendOnDemandPolicy
             summary: Send a one-time policy for multiple vins
@@ -817,7 +793,7 @@ paths:
                 - AdaApiAuthorizer: []
                 - api_key: []
             x-codegen-request-body-name: body
-    /ondemand/live:
+    /v1/ondemand/live:
         post:
             operationId: sendLivePolicy
             summary: "Send a single policy plan"
@@ -838,7 +814,7 @@ paths:
                                 type: integer
             tags:
                 - On Demand Service
-    /synthetic:
+    /v1/synthetic:
         get:
             operationId: getSynthetics
             summary: Gets all synthetics
@@ -869,12 +845,15 @@ paths:
             responses:
                 "200":
                     description: 200 response
-                    content: {}
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Synthetic"
             security:
                 - AdaApiAuthorizer: []
                 - api_key: []
             x-codegen-request-body-name: body
-    /synthetic/{syntheticId}:
+    /v1/synthetic/{syntheticId}:
         get:
             operationId: getSynthetic
             summary: Get a single synthetic
@@ -912,6 +891,8 @@ components:
                     type: string
         GetVinScheduleResponse:
             type: object
+            required:
+                - vin
             properties:
                 vin:
                     type: string
@@ -975,6 +956,8 @@ components:
                 $ref: "#/components/schemas/PolicyVinRequest"
         GetHistogramsResponse:
             type: object
+            required:
+                - Items
             properties:
                 Items:
                     type: array
@@ -982,6 +965,8 @@ components:
                         $ref: "#/components/schemas/Histogram"
         GetSensorsResponse:
             type: object
+            required:
+                - Items
             properties:
                 Items:
                     type: array
@@ -1014,6 +999,9 @@ components:
                     format: date-time
         UserSearchResponse:
             type: object
+            required:
+                - data
+                - pageInfo
             properties:
                 data:
                     type: array
@@ -1023,6 +1011,9 @@ components:
                     $ref: "#/components/schemas/PageInfo"
         VinSearchResponse:
             type: object
+            required:
+                - data
+                - pageInfo
             properties:
                 data:
                     type: array
@@ -1032,6 +1023,9 @@ components:
                     $ref: "#/components/schemas/PageInfo"
         PolicySearchResponse:
             type: object
+            required:
+                - data
+                - pageInfo
             properties:
                 data:
                     type: array
@@ -1041,16 +1035,21 @@ components:
                             - $ref: "#/components/schemas/AdaProtobufPolicy"
                 pageInfo:
                     $ref: "#/components/schemas/PageInfo"
-
         CreatePolicyRequest:
             type: object
+            required:
+                - pname
+                - grp_id
+                - plans
             properties:
                 pname:
                     type: string
+                grp_id:
+                    type: number
                 renew:
                     type: number
                     x-ada-units: ms
-                backup_windows:
+                backup_window:
                     type: number
                 delay:
                     type: number
@@ -1076,6 +1075,9 @@ components:
                         type: string
         Sensor:
             type: object
+            required:
+                - componentname
+                - source
             properties:
                 servicetype:
                     type: string
@@ -1101,6 +1103,8 @@ components:
                     type: array
                     items:
                         type: string
+                avglen:
+                    type: string
                 ppsSource:
                     type: string
                 channelNames:
@@ -1191,20 +1195,30 @@ components:
             properties:
                 plan:
                     $ref: "#/components/schemas/AdaJsonPlan"
+        CreateGroupRequest:
+            type: object
+            required:
+                - groupName
+                - operations
+            properties:
+                groupName:
+                    type: string
+                operations:
+                    type: array
+                    items:
+                        type: string
         CreateUserRequest:
             type: object
             required:
                 - userName
-                - groups
+                - email
             properties:
                 userName:
                     type: string
+                email:
+                    type: string
                 temporaryPassword:
                     type: string
-                groups:
-                    type: array
-                    items:
-                        type: string
         CreateHistogramRequest:
             required:
                 - name
@@ -1381,6 +1395,8 @@ components:
                     type: string
         GetSyntheticsResponse:
             type: object
+            required:
+                - Items
             properties:
                 Items:
                     type: array
@@ -1405,6 +1421,8 @@ components:
                         $ref: "#/components/schemas/AdaElement"
         GetGroupsResponse:
             type: object
+            required:
+                - data
             properties:
                 data:
                     type: array
@@ -1438,16 +1456,22 @@ components:
             type: object
             required:
                 - id
+                - grp_id
                 - pname
+                - plans
             properties:
                 id:
                     type: number
+                grp_id:
+                    type: number
                 pname:
+                    type: string
+                fname:
                     type: string
                 renew:
                     type: number
                     x-ada-units: ms
-                backup_windows:
+                backup_window:
                     type: number
                 delay:
                     type: number
@@ -1488,21 +1512,27 @@ components:
                 - poll
                 - onchange
                 - timeseries
-                - timeseries-conchange
+                - timeseries-onchange
         AdaJsonPolicy:
             type: object
             required:
                 - id
+                - grp_id
                 - pname
+                - plans
             properties:
                 id:
                     type: number
+                grp_id:
+                    type: number
                 pname:
+                    type: string
+                fname:
                     type: string
                 renew:
                     type: number
                     x-ada-units: ms
-                backup_windows:
+                backup_window:
                     type: number
                 delay:
                     type: number
@@ -1570,7 +1600,7 @@ components:
                 histoid:
                     type: number
                 histoname:
-                    type: number
+                    type: string
                 multiDimensional:
                     type: boolean
                 signals:
@@ -1601,6 +1631,10 @@ components:
                     type: array
                     items:
                         $ref: "#/components/schemas/HistogramBin"
+                subsignals:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/HistogramSignal"
         HistogramBin:
             type: object
             properties:
@@ -1682,6 +1716,8 @@ components:
             properties:
                 synthid:
                     type: number
+                name:
+                    type: string
                 param:
                     type: string
                 source:
@@ -1694,7 +1730,7 @@ components:
                     type: array
                     items:
                         $ref: "#/components/schemas/AdaElement"
-                createdTimestamp:
+                createdTimeStamp:
                     type: number
         Source:
             type: string

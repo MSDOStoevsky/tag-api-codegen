@@ -17,7 +17,6 @@ const BAD_YAML_MESSAGE =
  */
 exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 	let openApiFile = undefined;
-
 	try {
 		openApiFile = yaml.load(fs.readFileSync(inputFile, "utf8"));
 	} catch (error) {
@@ -41,7 +40,7 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 	console.log("[INFO] Parsed API", openApiFile);
 
 	// Generate microservice request functions (or multiple servlets).
-	fs.readFile("templates/service.mustache", (error, data) => {
+	fs.readFile("./templates/service.mustache", (error, data) => {
 		const flatPathsGroupedByTag = _(openApiFile.paths)
 			.flatMap((methods, path) => {
 				return _.map(methods, (implementation, method) => {
@@ -59,24 +58,35 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 			const serviceDirectory = `${baseOutputDirectory}/${_.camelCase(tagName)}`;
 
 			const mustacheContext = {
-				BASE_PATH: openApiFile.basePath,
+				BASE_PATH: "`${process.env.REACT_APP_API_URL}`",
 				FUNCTIONS: _.map(paths, (pathConfig) => {
-					console.log(pathConfig.requestBody);
+					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
+						return parameter.in === "query";
+					});
+
+					const headQueryName = !_.isEmpty(queryParams) && _.head(queryParams).name;
+
 					return {
 						FUNCTION_SUMMARY: pathConfig.summary,
 						FUNCTION_NAME:
 							pathConfig.operationId ||
 							generateOperationId(pathConfig.method, pathConfig.path),
-						FUNCTION_PARAMS: _.map(pathConfig.parameters, (parameter) => {
-							return {
-								FUNCTION_PARAM: parameter.name,
-								FUNCTION_PARAM_TYPE: translateDataType(parameter.schema),
-								FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub"
-							};
-						}),
+						FUNCTION_PARAMS: pathConfig.parameters && {
+							FUNCTION_PARAM_CONFIGS: _.map(pathConfig.parameters, (parameter) => {
+								return {
+									FUNCTION_PARAM: parameter.name,
+									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub"
+								};
+							})
+						},
 						FUNCTION_PAYLOAD: getRequestPayloadType(pathConfig.requestBody),
 						REQUEST_METHOD: pathConfig.method,
-						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
+						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
+						// Currently only supporting one query param.
+						REQUEST_QUERY: headQueryName && {
+							QUERY_NAME: headQueryName,
+							QUERY_VALUE_PATH: `\${params.${headQueryName}}`
+						}
 					};
 				})
 			};
@@ -97,9 +107,12 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 	});
 
 	// Generate all types for models.
-	fs.readFile("templates/apiModelTypes.mustache", (error, data) => {
-		const mustacheContext = {
-			MODELS: _.map(openApiFile.components.schemas, (schema, schemaName) => {
+	fs.readFile("./templates/apiModelTypes.mustache", (error, data) => {
+		const models = _(openApiFile.components.schemas)
+			.pickBy((schema) => {
+				return !schema.enum;
+			})
+			.map((schema, schemaName) => {
 				return {
 					MODEL_NAME: schemaName,
 					MODEL_DESCRIPTION: schema.description,
@@ -114,6 +127,29 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 					})
 				};
 			})
+			.value();
+
+		const enums = _(openApiFile.components.schemas)
+			.pickBy((schema) => {
+				return !!schema.enum;
+			})
+			.map((schema, schemaName) => {
+				return {
+					ENUM_NAME: schemaName,
+					ENUM_DESCRIPTION: schema.description,
+					ENUM_ENTRIES: _.map(schema.enum, (enumEntry) => {
+						return {
+							ENUM_KEY: _.toUpper(_.snakeCase(enumEntry)) || enumEntry,
+							ENUM_VALUE: schema.type === "string" ? `"${enumEntry}"` : enumEntry
+						};
+					})
+				};
+			})
+			.value();
+
+		const mustacheContext = {
+			MODELS: models,
+			ENUMS: enums
 		};
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
@@ -127,21 +163,23 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 	});
 
 	// Generate all runtime models from schema.
-	fs.readFile("templates/apiModels.mustache", (error, data) => {
-		const mustacheContext = {
-			MODELS: _.map(openApiFile.components.schemas, (schema, schemaName) => {
+	fs.readFile("./templates/apiModels.mustache", (error, data) => {
+		const schemas = openApiFile.components.schemas;
+		const models = _(schemas)
+			.pickBy((schema) => {
+				return !schema.enum;
+			})
+			.map((schema, schemaName) => {
 				return {
 					MODEL_NAME: schemaName,
 					MODEL_DESCRIPTION: schema.description,
 					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
-							PROPERTY_TYPE: translateFieldType(property),
-							PROPERTY_OPTIONS: property.enum && {
-								ITEMS: property.enum
-							},
+							PROPERTY_TYPE: translateFieldType(schemas, property),
+							PROPERTY_OPTIONS: getEnumEntries(schemas, property),
 							PROPERTY_DESCRIPTION: property.description,
-							PROPERTY_UNITS: property.units,
+							PROPERTY_UNITS: property["x-ada-units"],
 							PROPERTY_FORMAT: property.format,
 							PROPERTY_DEFAULT: property.default || generateDefaultValue(property),
 							PROPERTY_MINIMUM: property.minimum || property.minLength,
@@ -150,6 +188,10 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 					})
 				};
 			})
+			.value();
+
+		const mustacheContext = {
+			MODELS: models
 		};
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
@@ -164,8 +206,35 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 };
 
 /**
- *
+ * Locates the enum entries for a given schema.
+ * If the schema is not an enum then this will return `undefined`
+ * @param {array} schemas - the list of all schemas in this api.
+ * @param {object} schema - the current schema to extract enum entries, if they exist.
+ * @returns undefined or the object containing all enum items as the value of the key "ITEMS".
+ */
+function getEnumEntries(schemas, schema) {
+	const enumItemsObject = {
+		ITEMS: []
+	};
+
+	if (schema.enum) {
+		enumItemsObject.ITEMS = schema.enum;
+		return enumItemsObject;
+	} else if (schema.$ref) {
+		return getEnumEntries(schemas, schemas[getSchemaName(schema.$ref)]);
+	} else {
+		return undefined;
+	}
+}
+
+/**
+ * This function transforms an API path from an OpenAPI path
+ * to a javascript template literal, where brace surrounded path
+ * variables are turned into injections {} -> "${}".
+ * And in place of the path variable names, the names are prepended with
+ * the "params" object reference.
  * @param {*} request
+ * @param {*} parameters
  * @returns
  */
 function transformApiPath(request, parameters) {
@@ -195,7 +264,7 @@ function getRequestPayloadType(requestBody) {
 	const schema = contentType.schema;
 
 	if (schema.$ref) {
-		return `ApiModelTypes.${getSchema(schema.$ref)}`;
+		return `ApiModelTypes.${getSchemaName(schema.$ref)}`;
 	}
 
 	if (schema.type === "object") {
@@ -214,7 +283,7 @@ function getRequestPayloadType(requestBody) {
  * @param {string} ref - the open api yaml $ref string.
  * @returns the name of the schema.
  */
-function getSchema(ref) {
+function getSchemaName(ref) {
 	return _(ref).split("/").last();
 }
 
@@ -238,16 +307,27 @@ function translateDataType(schema) {
 	let propertyType;
 
 	if (!schema.type && schema.$ref) {
-		propertyType = getSchema(schema.$ref);
+		propertyType = getSchemaName(schema.$ref);
 	} else if (schema.enum) {
-		// TODO: Handle enum types.
+		// assumption that enums are handled outside of this context.
 		propertyType = "any";
+	} else if (schema.oneOf) {
+		const types = _.map(schema.oneOf, (these) => {
+			return translateDataType(these);
+		});
+		propertyType = _.join(types, " | ");
 	} else if (schema.type === "integer") {
 		propertyType = "number";
 	} else if (schema.type === "array") {
-		propertyType = `Array<${getSchema(schema.items.$ref) || schema.items.type}>`;
+		if (!schema.items.type) {
+			propertyType = `Array<${translateDataType(schema.items)}>`;
+		} else {
+			propertyType = `Array<${getSchemaName(schema.items.$ref) || schema.items.type}>`;
+		}
 	} else if (schema.type === "boolean") {
 		propertyType = "boolean";
+	} else if (schema.type === "object") {
+		propertyType = "Record<string, unknown>";
 	} else {
 		propertyType = schema.type;
 	}
@@ -256,33 +336,36 @@ function translateDataType(schema) {
 }
 
 /**
- * Translates a data type from OpenAPI to a Typescript data type (if it is not common between them).
+ * Translates a data type from OpenAPI to a FieldType string. This is used specifically for API
+ * models (the runtime representation of the associated typescript interface).
  * For more info on OpenAPI data types https://swagger.io/docs/specification/data-models/data-types/
- * @param {object} schema
- * @returns typescript data type.
+ * @param {array} schemas - the list of all schemas in this file.
+ * @param {object} schema - the current schema to be translated.
+ * @returns a field type for a field config.
  */
-function translateFieldType(schema) {
-	let propertyType;
+function translateFieldType(schemas, schema) {
+	let fieldType;
 
 	if (!schema.type && schema.$ref) {
-		propertyType = "OBJECT";
+		const externalSchema = schemas[getSchemaName(schema.$ref)];
+		fieldType = translateFieldType(schemas, externalSchema);
 	} else if (schema.enum) {
-		propertyType = "ENUM";
+		fieldType = "ENUM";
 	} else if (schema.type === "integer" || schema.type === "number") {
-		propertyType = "NUMBER";
+		fieldType = "NUMBER";
 	} else if (schema.type === "array") {
-		propertyType = "ARRAY";
+		fieldType = "ARRAY";
 	} else if (schema.type === "object") {
-		propertyType = "OBJECT";
+		fieldType = "OBJECT";
 	} else if (schema.type === "string") {
-		propertyType = "STRING";
+		fieldType = "STRING";
 	} else if (schema.type === "boolean") {
-		propertyType = "BOOLEAN";
+		fieldType = "BOOLEAN";
 	} else {
-		propertyType = "UNDEFINED";
+		fieldType = "UNDEFINED";
 	}
 
-	return propertyType;
+	return fieldType;
 }
 
 /**
