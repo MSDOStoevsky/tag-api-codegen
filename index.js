@@ -61,6 +61,7 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 			const mustacheContext = {
 				BASE_PATH: openApiFile.basePath,
 				FUNCTIONS: _.map(paths, (pathConfig) => {
+					console.log(pathConfig.requestBody);
 					return {
 						FUNCTION_SUMMARY: pathConfig.summary,
 						FUNCTION_NAME:
@@ -69,12 +70,13 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 						FUNCTION_PARAMS: _.map(pathConfig.parameters, (parameter) => {
 							return {
 								FUNCTION_PARAM: parameter.name,
-								FUNCTION_PARAM_TYPE: translateType(parameter.schema),
+								FUNCTION_PARAM_TYPE: translateDataType(parameter.schema),
 								FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub"
 							};
 						}),
+						FUNCTION_PAYLOAD: getRequestPayloadType(pathConfig.requestBody),
 						REQUEST_METHOD: pathConfig.method,
-						REQUEST_PATH: () => _.replace(pathConfig.path, /{/g, "${")
+						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
 				})
 			};
@@ -105,7 +107,9 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 						return {
 							PROPERTY_NAME: propertyName,
 							MODEL_DESCRIPTION: property.description,
-							PROPERTY_TYPE: translateType(property)
+							PROPERTY_TYPE: translateDataType(property),
+							PROPERTY_OPTIONAL: !_.includes(schema.required, propertyName),
+							PROPERTY_READONLY: property.readOnly
 						};
 					})
 				};
@@ -132,9 +136,16 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
+							PROPERTY_TYPE: translateFieldType(property),
+							PROPERTY_OPTIONS: property.enum && {
+								ITEMS: property.enum
+							},
+							PROPERTY_DESCRIPTION: property.description,
+							PROPERTY_UNITS: property.units,
+							PROPERTY_FORMAT: property.format,
 							PROPERTY_DEFAULT: property.default || generateDefaultValue(property),
-							PROPERTY_MINIMUM: property.minimum || property.minLength || "undefined",
-							PROPERTY_MAXIMUM: property.maximum || property.maxLength || "undefined"
+							PROPERTY_MINIMUM: property.minimum || property.minLength,
+							PROPERTY_MAXIMUM: property.maximum || property.maxLength
 						};
 					})
 				};
@@ -151,6 +162,52 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 		});
 	});
 };
+
+/**
+ *
+ * @param {*} request
+ * @returns
+ */
+function transformApiPath(request, parameters) {
+	let apiPath = request;
+	_.forEach(parameters, (parameter) => {
+		apiPath = _.replace(apiPath, `{${parameter.name}}`, `\${params.${parameter.name}}`);
+	});
+	return apiPath;
+}
+
+/**
+ *
+ * @param {*} requestBody
+ * @returns
+ */
+function getRequestPayloadType(requestBody) {
+	if (!requestBody) {
+		return undefined;
+	}
+
+	const contentType =
+		requestBody.content["application/json"] ||
+		requestBody.content["application/xml"] ||
+		requestBody.content["application/x-www-form-urlencoded"] ||
+		requestBody.context["text/plain"];
+
+	const schema = contentType.schema;
+
+	if (schema.$ref) {
+		return `ApiModelTypes.${getSchema(schema.$ref)}`;
+	}
+
+	if (schema.type === "object") {
+		return `{ 
+			${_.map(schema.properties, (property, propertyName) => {
+				return `${propertyName}: ${translateDataType(property)};`;
+			})}
+		}`;
+	}
+
+	// TODO: handle all other cases.
+}
 
 /**
  * Extracts the name of the schema item from the open api $ref string.
@@ -177,20 +234,52 @@ function generateOperationId(method, path) {
  * @param {object} schema
  * @returns typescript data type.
  */
-function translateType(schema) {
+function translateDataType(schema) {
 	let propertyType;
 
 	if (!schema.type && schema.$ref) {
 		propertyType = getSchema(schema.$ref);
-	} else if (!schema.type && schema.enum) {
+	} else if (schema.enum) {
 		// TODO: Handle enum types.
 		propertyType = "any";
 	} else if (schema.type === "integer") {
 		propertyType = "number";
 	} else if (schema.type === "array") {
 		propertyType = `Array<${getSchema(schema.items.$ref) || schema.items.type}>`;
+	} else if (schema.type === "boolean") {
+		propertyType = "boolean";
 	} else {
 		propertyType = schema.type;
+	}
+
+	return propertyType;
+}
+
+/**
+ * Translates a data type from OpenAPI to a Typescript data type (if it is not common between them).
+ * For more info on OpenAPI data types https://swagger.io/docs/specification/data-models/data-types/
+ * @param {object} schema
+ * @returns typescript data type.
+ */
+function translateFieldType(schema) {
+	let propertyType;
+
+	if (!schema.type && schema.$ref) {
+		propertyType = "OBJECT";
+	} else if (schema.enum) {
+		propertyType = "ENUM";
+	} else if (schema.type === "integer" || schema.type === "number") {
+		propertyType = "NUMBER";
+	} else if (schema.type === "array") {
+		propertyType = "ARRAY";
+	} else if (schema.type === "object") {
+		propertyType = "OBJECT";
+	} else if (schema.type === "string") {
+		propertyType = "STRING";
+	} else if (schema.type === "boolean") {
+		propertyType = "BOOLEAN";
+	} else {
+		propertyType = "UNDEFINED";
 	}
 
 	return propertyType;

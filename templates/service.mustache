@@ -2,13 +2,26 @@
 // If an error occurs with the generated code, submit a PR into 
 // https://github.com/MSDOStoevsky/tag-api-codegen or alter the 
 // project locally if forked.
+import * as ApiModelTypes from "../apiModelTypes";
 
 /**
  * The service base path.
  */
-const BASE_PATH = `{{BASE_PATH}}/`;
+const BASE_PATH = "{{{BASE_PATH}}}";
 
 {{#FUNCTIONS}}
+/**
+ * The path parameters for the {@link {{FUNCTION_NAME}}} function.
+ */
+export interface {{FUNCTION_NAME}}Params {
+	{{#FUNCTION_PARAMS}}
+	/**
+	 * {{FUNCTION_PARAM_DESCRIPTION}}
+	 */
+	{{FUNCTION_PARAM}}: {{FUNCTION_PARAM_TYPE}};
+	{{/FUNCTION_PARAMS}}
+}
+
 /**
  * {{FUNCTION_SUMMARY}}
 {{#FUNCTION_PARAMS}}
@@ -16,10 +29,14 @@ const BASE_PATH = `{{BASE_PATH}}/`;
 {{/FUNCTION_PARAMS}}
  * @returns api request configuration data.
  */
-export function {{FUNCTION_NAME}}({{#FUNCTION_PARAMS}}{{FUNCTION_PARAM}}: {{FUNCTION_PARAM_TYPE}},{{/FUNCTION_PARAMS}}): ApiRequestConfig {
+export function {{FUNCTION_NAME}}(
+	params: {{FUNCTION_NAME}}Params,
+	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{.}}{{/FUNCTION_PAYLOAD}}
+): ApiRequestConfig<{{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{.}}{{/FUNCTION_PAYLOAD}}> {
 	return {
-		path: `{{{REQUEST_PATH}}}`,
-		method: "{{REQUEST_METHOD}}"
+		path: `${BASE_PATH}{{{REQUEST_PATH}}}`,
+		method: "{{REQUEST_METHOD}}",
+		payload: payload
 	};
 }
 
@@ -27,7 +44,7 @@ export function {{FUNCTION_NAME}}({{#FUNCTION_PARAMS}}{{FUNCTION_PARAM}}: {{FUNC
 /**
  * Configuration data to form an api request around this path.
  */
-interface ApiRequestConfig {
+interface ApiRequestConfig<T> {
 	/**
 	 * The api endpoint path.
 	 */
@@ -36,4 +53,8 @@ interface ApiRequestConfig {
 	 * The HTTP request method.
 	 */
 	method: "get" | "post" | "delete" | "patch" | "put";
+	/**
+	 * The request payload
+	 */
+	payload: T;
 }

@@ -5,14 +5,45 @@
 
 import * as ApiModelTypes from "./apiModelTypes";
 
+
+/**
+ * Supported field types.
+ */
+export enum FieldType {
+	NUMBER = "NUMBER",
+	STRING = "STRING",
+	BOOLEAN = "BOOLEAN",
+	ARRAY = "ARRAY",
+	OBJECT = "OBJECT",
+	ENUM = "ENUM",
+	UNDEFINED = "UNDEFINED"
+}
+
 /**
  * The runtime-level field metadata.
  */
-interface FieldConfig {
+export interface FieldConfig {
+    /**
+     * {@see FieldType}.
+     */
+    fieldType: FieldType;
     /**
      * The default value.
      */
-    default: number | string | [] | Record<string, unknown>;
+    default: any;
+    /**
+     * The parameter description.
+     */
+    description: string;
+    /**
+     * The parameter units.
+     */
+    units: string | undefined;
+    /**
+     * The parameter format
+     * Undefined if there is no format declared.
+     */
+    format: string | undefined;
     /**
      * The minumum value of the field.
      * Undefined if there is no minimum.
@@ -23,6 +54,11 @@ interface FieldConfig {
      * Undefined if there is no maximum.
      */
     maximum: number | undefined;
+	/**
+	 * Options available if the fieldType is of type {@link FieldType.ENUM}.
+     * Undefined if the fieldType is not of type {@link FieldType.ENUM}.
+	 */
+	options: Array<string> | undefined;
 }
 
 {{#MODELS}}
@@ -32,12 +68,18 @@ interface FieldConfig {
 export const {{MODEL_NAME}}: Record<keyof ApiModelTypes.{{MODEL_NAME}}, FieldConfig> = {
     {{#MODEL_PROPERTIES}}
     /**
+     * {{PROPERTY_DESCRIPTION}}
      * {@see ApiModelTypes.{{MODEL_NAME}}.{{PROPERTY_NAME}}}
      */
     {{PROPERTY_NAME}}: {
+        fieldType: FieldType.{{{PROPERTY_TYPE}}},
         default: {{{PROPERTY_DEFAULT}}},
-        minimum: {{PROPERTY_MINIMUM}},
-        maximum: {{PROPERTY_MAXIMUM}}
+        description: "{{PROPERTY_DESCRIPTION}}",
+        format: {{^PROPERTY_FORMAT}}undefined{{/PROPERTY_FORMAT}}{{#PROPERTY_FORMAT}}"{{.}}"{{/PROPERTY_FORMAT}},
+        units: {{^PROPERTY_UNITS}}undefined{{/PROPERTY_UNITS}}{{#PROPERTY_UNITS}}"{{.}}"{{/PROPERTY_UNITS}},
+        minimum: {{^PROPERTY_MINIMUM}}undefined{{/PROPERTY_MINIMUM}}{{PROPERTY_MINIMUM}},
+        maximum: {{^PROPERTY_MAXIMUM}}undefined{{/PROPERTY_MAXIMUM}}{{PROPERTY_MAXIMUM}},
+        options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}"{{.}}",{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
     },
     {{/MODEL_PROPERTIES}}
 }
