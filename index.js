@@ -80,6 +80,7 @@ exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
 							})
 						},
 						FUNCTION_PAYLOAD: getRequestPayloadType(pathConfig.requestBody),
+						FUNCTION_RESPONSE: getResponseType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
 						// Currently only supporting one query param.
@@ -259,23 +260,28 @@ function getRequestPayloadType(requestBody) {
 		requestBody.content["application/json"] ||
 		requestBody.content["application/xml"] ||
 		requestBody.content["application/x-www-form-urlencoded"] ||
-		requestBody.context["text/plain"];
+		requestBody.content["text/plain"];
 
-	const schema = contentType.schema;
+	return translateDataType(contentType.schema, true);
+}
 
-	if (schema.$ref) {
-		return `ApiModelTypes.${getSchemaName(schema.$ref)}`;
+/**
+ * Retrieves the response type for an api function.
+ * @param {*} response
+ * @returns the typescript data type.
+ */
+function getResponseType(response) {
+	if (_.isEmpty(response.content)) {
+		return "any";
 	}
 
-	if (schema.type === "object") {
-		return `{ 
-			${_.map(schema.properties, (property, propertyName) => {
-				return `${propertyName}: ${translateDataType(property)};`;
-			})}
-		}`;
-	}
+	const contentType =
+		response.content["application/json"] ||
+		response.content["application/xml"] ||
+		response.content["application/x-www-form-urlencoded"] ||
+		response.content["text/plain"];
 
-	// TODO: handle all other cases.
+	return translateDataType(contentType.schema, true);
 }
 
 /**
@@ -301,28 +307,44 @@ function generateOperationId(method, path) {
  * Translates a data type from OpenAPI to a Typescript data type (if it is not common between them).
  * For more info on OpenAPI data types https://swagger.io/docs/specification/data-models/data-types/
  * @param {object} schema
+ * @param {boolean} isForeignReference - flag to indicate whether this is for a foreign file.
  * @returns typescript data type.
  */
-function translateDataType(schema) {
+function translateDataType(schema, isForeignReference = false) {
 	let propertyType;
 
+	console.log(schema);
+
 	if (!schema.type && schema.$ref) {
-		propertyType = getSchemaName(schema.$ref);
+		propertyType = _.join(
+			[isForeignReference ? "ApiModelTypes." : undefined, getSchemaName(schema.$ref)],
+			""
+		);
 	} else if (schema.enum) {
 		// assumption that enums are handled outside of this context.
 		propertyType = "any";
 	} else if (schema.oneOf) {
 		const types = _.map(schema.oneOf, (these) => {
-			return translateDataType(these);
+			return translateDataType(these, isForeignReference);
 		});
 		propertyType = _.join(types, " | ");
 	} else if (schema.type === "integer") {
 		propertyType = "number";
 	} else if (schema.type === "array") {
 		if (!schema.items.type) {
-			propertyType = `Array<${translateDataType(schema.items)}>`;
+			propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
 		} else {
-			propertyType = `Array<${getSchemaName(schema.items.$ref) || schema.items.type}>`;
+			const fullTypePath =
+				getSchemaName(schema.items.$ref) &&
+				_.join(
+					[
+						isForeignReference ? "ApiModelTypes." : undefined,
+						getSchemaName(schema.items.$ref)
+					],
+					""
+				);
+
+			propertyType = `Array<${fullTypePath || schema.items.type}>`;
 		}
 	} else if (schema.type === "boolean") {
 		propertyType = "boolean";
