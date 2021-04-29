@@ -5,9 +5,7 @@ This project aims to provide a simple single purpose generation for typescript a
 
 ## Why?
 
-Current code generators for react and typescript output code fashioned to a specific request library. Most likely being fetch to remain agnostic to third party libraries. This situation will lead you to making changes to the code generator to either generate code with your library in mind, or add wrappers that end in promises that returns promises of promises and so on...
-
-This library skips all that debate and creates api functions that return an object with configuration information. It won't make the API call. It just tells you _how_ to make the API call.
+Current code generators for react and typescript output code fashioned to a specific request library, but to accomodate multiple wrappers that developers may use in their own projects the library is likely fetch. This project aims to focus the generation to only one library: Axios. Ideally this prevents initial development to adapt the code generators to adapt it to your project.
 
 ## Usage
 
