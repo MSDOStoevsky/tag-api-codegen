@@ -5,6 +5,7 @@ const fs = require("fs");
 const Mustache = require("mustache");
 const _ = require("lodash");
 const yaml = require("js-yaml");
+const Download = require("./download");
 
 const BAD_YAML_MESSAGE =
 	"[FATAL] Something about your yaml doesn't seem right. I can't process it.";
@@ -15,11 +16,16 @@ const BAD_YAML_MESSAGE =
  * @param {string} outputDirectory - desired output directory for generated files.
  * @param {boolean} isApiMonolith - flag indicating whether to treat this api as monolithic.
  */
-exports.generate = (inputFile, outputDirectory, isApiMonolith) => {
+exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 	let openApiFile = undefined;
 	try {
-		openApiFile = yaml.load(fs.readFileSync(inputFile, "utf8"));
+		if (_.startsWith(inputFile, "https://")) {
+			openApiFile = yaml.load(await Download.download(inputFile));
+		} else {
+			openApiFile = yaml.load(fs.readFileSync(inputFile, "utf8"));
+		}
 	} catch (error) {
+		console.log(error);
 		return console.log(BAD_YAML_MESSAGE);
 	}
 
