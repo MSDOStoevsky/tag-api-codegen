@@ -242,7 +242,7 @@ function getEnumEntries(schemas, schema) {
  * the "params" object reference.
  * @param {*} request
  * @param {*} parameters
- * @returns
+ * @returns the path template literal such that it accepts function parameters.
  */
 function transformApiPath(request, parameters) {
 	let apiPath = request;
@@ -253,9 +253,9 @@ function transformApiPath(request, parameters) {
 }
 
 /**
- *
+ * Discerns the typescript type for an api function
  * @param {*} requestBody
- * @returns
+ * @returns the typescript data type.
  */
 function getRequestPayloadType(requestBody) {
 	if (!requestBody) {
