@@ -61,27 +61,49 @@ export interface FieldConfig {
 	options: Array<string> | undefined;
 }
 
+/**
+ * A map of field keys to a field configuration map.
+ */
+export type ApiModelProperties<T> = Record<keyof T, FieldConfig>;
+
+/**
+ * The generic type of an Api model metadata.
+ */
+export interface ApiModel<T> {
+	/**
+     * The name of the model.
+	 */
+    MODEL_NAME: string;
+	/**
+     * The properties of this model.
+	 */
+    MODEL_PROPERTIES: ApiModelProperties<T>;
+}
+
 {{#MODELS}}
 /**
  * {{MODEL_DESCRIPTION}}
  */
-export const {{MODEL_NAME}}: Record<keyof ApiModelTypes.{{MODEL_NAME}}, FieldConfig> = {
-    {{#MODEL_PROPERTIES}}
-    /**
-     * {{PROPERTY_DESCRIPTION}}
-     * {@see ApiModelTypes.{{MODEL_NAME}}.{{PROPERTY_NAME}}}
-     */
-    {{PROPERTY_NAME}}: {
-        fieldType: FieldType.{{{PROPERTY_TYPE}}},
-        default: {{{PROPERTY_DEFAULT}}},
-        description: "{{PROPERTY_DESCRIPTION}}",
-        format: {{^PROPERTY_FORMAT}}undefined{{/PROPERTY_FORMAT}}{{#PROPERTY_FORMAT}}"{{.}}"{{/PROPERTY_FORMAT}},
-        units: {{^PROPERTY_UNITS}}undefined{{/PROPERTY_UNITS}}{{#PROPERTY_UNITS}}"{{.}}"{{/PROPERTY_UNITS}},
-        minimum: {{^PROPERTY_MINIMUM}}undefined{{/PROPERTY_MINIMUM}}{{PROPERTY_MINIMUM}},
-        maximum: {{^PROPERTY_MAXIMUM}}undefined{{/PROPERTY_MAXIMUM}}{{PROPERTY_MAXIMUM}},
-        options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}"{{.}}",{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
-    },
-    {{/MODEL_PROPERTIES}}
+export const {{MODEL_NAME}}: ApiModel<ApiModelTypes.{{MODEL_NAME}}> = {
+    MODEL_NAME: "{{MODEL_NAME}}",
+    MODEL_PROPERTIES: {
+        {{#MODEL_PROPERTIES}}
+        /**
+        * {{PROPERTY_DESCRIPTION}}
+        * {@see ApiModelTypes.{{MODEL_NAME}}.{{PROPERTY_NAME}}}
+        */
+        {{PROPERTY_NAME}}: {
+            fieldType: FieldType.{{{PROPERTY_TYPE}}},
+            default: {{{PROPERTY_DEFAULT}}},
+            description: "{{PROPERTY_DESCRIPTION}}",
+            format: {{^PROPERTY_FORMAT}}undefined{{/PROPERTY_FORMAT}}{{#PROPERTY_FORMAT}}"{{.}}"{{/PROPERTY_FORMAT}},
+            units: {{^PROPERTY_UNITS}}undefined{{/PROPERTY_UNITS}}{{#PROPERTY_UNITS}}"{{.}}"{{/PROPERTY_UNITS}},
+            minimum: {{^PROPERTY_MINIMUM}}undefined{{/PROPERTY_MINIMUM}}{{PROPERTY_MINIMUM}},
+            maximum: {{^PROPERTY_MAXIMUM}}undefined{{/PROPERTY_MAXIMUM}}{{PROPERTY_MAXIMUM}},
+            options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}"{{.}}",{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
+        },
+        {{/MODEL_PROPERTIES}}
+    }
 };
 
 {{/MODELS}}
