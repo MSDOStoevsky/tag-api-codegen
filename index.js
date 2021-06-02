@@ -186,6 +186,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 							PROPERTY_TYPE: translateFieldType(schemas, property),
 							PROPERTY_OPTIONS: getEnumEntries(schemas, property),
 							PROPERTY_DESCRIPTION: property.description,
+							PROPERTY_REQUIRED: _.includes(schema.required, propertyName),
 							PROPERTY_UNITS: property["x-ada-units"],
 							PROPERTY_FORMAT: property.format,
 							PROPERTY_DEFAULT: property.default || generateDefaultValue(property),

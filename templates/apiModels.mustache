@@ -36,6 +36,10 @@ export interface FieldConfig {
      */
     description: string;
     /**
+     * Whether the parameter is required.
+     */
+    required: boolean;
+    /**
      * The parameter units.
      */
     units: string | undefined;
@@ -96,6 +100,7 @@ export const {{MODEL_NAME}}: ApiModel<ApiModelTypes.{{MODEL_NAME}}> = {
             fieldType: FieldType.{{{PROPERTY_TYPE}}},
             default: {{{PROPERTY_DEFAULT}}},
             description: "{{PROPERTY_DESCRIPTION}}",
+            required: {{PROPERTY_REQUIRED}},
             format: {{^PROPERTY_FORMAT}}undefined{{/PROPERTY_FORMAT}}{{#PROPERTY_FORMAT}}"{{.}}"{{/PROPERTY_FORMAT}},
             units: {{^PROPERTY_UNITS}}undefined{{/PROPERTY_UNITS}}{{#PROPERTY_UNITS}}"{{.}}"{{/PROPERTY_UNITS}},
             minimum: {{^PROPERTY_MINIMUM}}undefined{{/PROPERTY_MINIMUM}}{{PROPERTY_MINIMUM}},
