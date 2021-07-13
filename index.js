@@ -15,8 +15,12 @@ const BAD_YAML_MESSAGE =
  * @param {string} inputFile - input swagger/openapi file for processing.
  * @param {string} outputDirectory - desired output directory for generated files.
  * @param {boolean} isApiMonolith - flag indicating whether to treat this api as monolithic.
+ * @param {string} userProvidedServiceName - Optional service name for api file.
  */
-exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
+exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName) => {
+	const serviceDirectoryName =
+		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
+
 	let openApiFile = undefined;
 	try {
 		if (_.startsWith(inputFile, "https://")) {
@@ -47,24 +51,48 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 
 	// Generate microservice request functions (or multiple servlets).
 	fs.readFile("./templates/service.mustache", (error, data) => {
-		const flatPathsGroupedByTag = _(openApiFile.paths)
-			.flatMap((methods, path) => {
-				return _.map(methods, (implementation, method) => {
-					return {
-						path: path,
-						method: method,
-						...implementation
-					};
-				});
-			})
-			.groupBy((flatPath) => _.head(flatPath.tags) || "default")
-			.value();
+		let servicePaths = undefined;
 
-		_.forEach(flatPathsGroupedByTag, (paths, tagName) => {
-			const serviceDirectory = `${baseOutputDirectory}/${_.camelCase(tagName)}`;
+		if (isApiMonolith) {
+			servicePaths = _(openApiFile.paths)
+				.flatMap((methods, path) => {
+					return _.map(methods, (implementation, method) => {
+						return {
+							path: path,
+							method: method,
+							...implementation
+						};
+					});
+				})
+				.groupBy((flatPath) => _.head(flatPath.tags) || "default")
+				.value();
+		} else {
+			servicePaths = {
+				[serviceDirectoryName || "noServiceName"]: _.flatMap(
+					openApiFile.paths,
+					(methods, path) => {
+						return _.map(methods, (implementation, method) => {
+							return {
+								path: path,
+								method: method,
+								...implementation
+							};
+						});
+					}
+				)
+			};
+		}
+
+		_.forEach(servicePaths, (paths, serviceName) => {
+			const serviceDirectory = `${baseOutputDirectory}/${_.camelCase(serviceName)}`;
+
+			const serviceFileBasePath = userProvidedServiceName
+				? `\`\${process.env.REACT_APP_${_.toUpper(userProvidedServiceName)}_API_URL}\``
+				: "`${process.env.REACT_APP_API_URL}`";
 
 			const mustacheContext = {
-				BASE_PATH: "`${process.env.REACT_APP_API_URL}`",
+				TYPES_DIRECTORY: isApiMonolith ? "../apiModelTypes" : "./apiModelTypes",
+				BASE_PATH: serviceFileBasePath,
 				FUNCTIONS: _.map(paths, (pathConfig) => {
 					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
 						return parameter.in === "query";
@@ -106,7 +134,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 
 			fs.writeFile(`${serviceDirectory}/index.ts`, fileContent, (error) => {
 				if (error) {
-					return console.log("[FATAL] Service file failed", tagName);
+					return console.log("[FATAL] Service file failed", serviceName);
 				}
 				console.log("[SUCCESS] Service file created");
 			});
@@ -161,7 +189,12 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
 
-		fs.writeFile(`${baseOutputDirectory}/apiModelTypes.ts`, fileContent, (error) => {
+		const outDirectory = _.join(
+			[baseOutputDirectory, serviceDirectoryName, "apiModelTypes.ts"],
+			"/"
+		);
+
+		fs.writeFile(outDirectory, fileContent, (error) => {
 			if (error) {
 				return console.log("[FATAL] Api model types file failed");
 			}
@@ -204,7 +237,12 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith) => {
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
 
-		fs.writeFile(`${baseOutputDirectory}/apiModels.ts`, fileContent, (error) => {
+		const outDirectory = _.join(
+			[baseOutputDirectory, serviceDirectoryName, "apiModels.ts"],
+			"/"
+		);
+
+		fs.writeFile(outDirectory, fileContent, (error) => {
 			if (error) {
 				return console.log(error);
 			}
