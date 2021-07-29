@@ -125,8 +125,9 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 								};
 							})
 						},
-						FUNCTION_PAYLOAD: getRequestPayloadType(pathConfig.requestBody),
-						FUNCTION_RESPONSE: getResponseType(pathConfig.responses["200"]),
+						FUNCTION_PAYLOAD:
+							pathConfig.requestBody && getHttpBodyType(pathConfig.requestBody),
+						FUNCTION_RESPONSE: getHttpBodyType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
 						// Currently only supporting one query param.
@@ -334,39 +335,21 @@ function transformApiPath(request, parameters) {
 }
 
 /**
- * Discerns the typescript type for an api function
- * @param {*} requestBody
+ * Discerns the typescript type for an api function by reading
+ * the type of the request or response body type.
+ * @param {*} body - the request/response body.
  * @returns the typescript data type.
  */
-function getRequestPayloadType(requestBody) {
-	if (!requestBody) {
-		return undefined;
-	}
-
-	const contentType =
-		requestBody.content["application/json"] ||
-		requestBody.content["application/xml"] ||
-		requestBody.content["application/x-www-form-urlencoded"] ||
-		requestBody.content["text/plain"];
-
-	return translateDataType(contentType.schema, true);
-}
-
-/**
- * Retrieves the response type for an api function.
- * @param {*} response
- * @returns the typescript data type.
- */
-function getResponseType(response) {
-	if (_.isEmpty(response.content)) {
+function getHttpBodyType(body) {
+	if (_.isEmpty(body.content)) {
 		return "any";
 	}
 
 	const contentType =
-		response.content["application/json"] ||
-		response.content["application/xml"] ||
-		response.content["application/x-www-form-urlencoded"] ||
-		response.content["text/plain"];
+		body.content["application/json"] ||
+		body.content["application/xml"] ||
+		body.content["application/x-www-form-urlencoded"] ||
+		body.content["text/plain"];
 
 	return translateDataType(contentType.schema, true);
 }
