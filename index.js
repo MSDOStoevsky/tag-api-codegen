@@ -11,6 +11,18 @@ const BAD_YAML_MESSAGE =
 	"[FATAL] Something about your yaml doesn't seem right. I can't process it.";
 
 /**
+ * Function to convert a string to PascalCase
+ * @example test -> Test
+ * @example test text -> TestText
+ * @example test-text -> TestText
+ * @param {string} string - input string
+ * @returns a string in PascalCase
+ */
+const pascalCase = (string) => {
+	return _.upperFirst(_.camelCase(string));
+};
+
+/**
  * Main generator function.
  * @param {string} inputFile - input swagger/openapi file for processing.
  * @param {string} outputDirectory - desired output directory for generated files.
@@ -113,8 +125,9 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 								};
 							})
 						},
-						FUNCTION_PAYLOAD: getRequestPayloadType(pathConfig.requestBody),
-						FUNCTION_RESPONSE: getResponseType(pathConfig.responses["200"]),
+						FUNCTION_PAYLOAD:
+							pathConfig.requestBody && getHttpBodyType(pathConfig.requestBody),
+						FUNCTION_RESPONSE: getHttpBodyType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
 						// Currently only supporting one query param.
@@ -143,13 +156,21 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 
 	// Generate all types for models.
 	fs.readFile("./templates/apiModelTypes.mustache", (error, data) => {
-		const models = _(openApiFile.components.schemas)
+		const allSchemas = openApiFile.components.schemas;
+
+		const models = _(allSchemas)
 			.pickBy((schema) => {
 				return !schema.enum;
 			})
+			.pickBy((schema) => {
+				return !schema.oneOf;
+			})
 			.map((schema, schemaName) => {
+				if (schema.allOf) {
+					schema = unifyModel(allSchemas, schema.allOf);
+				}
 				return {
-					MODEL_NAME: schemaName,
+					MODEL_NAME: pascalCase(schemaName),
 					MODEL_DESCRIPTION: schema.description,
 					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
 						return {
@@ -164,7 +185,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 			})
 			.value();
 
-		const enums = _(openApiFile.components.schemas)
+		const enums = _(allSchemas)
 			.pickBy((schema) => {
 				return !!schema.enum;
 			})
@@ -182,9 +203,25 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 			})
 			.value();
 
+		const types = _(allSchemas)
+			.pickBy((schema) => {
+				return schema.oneOf;
+			})
+			.map((schema, schemaName) => {
+				return {
+					TYPE_NAME: pascalCase(schemaName),
+					TYPE_DESCRIPTION: schema.description,
+					TYPE: _.map(schema.oneOf, (property) => {
+						return translateDataType(property);
+					}).join(" | ")
+				};
+			})
+			.value();
+
 		const mustacheContext = {
 			MODELS: models,
-			ENUMS: enums
+			ENUMS: enums,
+			TYPES: types
 		};
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
@@ -204,20 +241,26 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 
 	// Generate all runtime models from schema.
 	fs.readFile("./templates/apiModels.mustache", (error, data) => {
-		const schemas = openApiFile.components.schemas;
-		const models = _(schemas)
+		const allSchemas = openApiFile.components.schemas;
+		const models = _(allSchemas)
 			.pickBy((schema) => {
 				return !schema.enum;
 			})
+			.pickBy((schema) => {
+				return !schema.oneOf;
+			})
 			.map((schema, schemaName) => {
+				if (schema.allOf) {
+					schema = unifyModel(allSchemas, schema.allOf);
+				}
 				return {
-					MODEL_NAME: schemaName,
+					MODEL_NAME: pascalCase(schemaName),
 					MODEL_DESCRIPTION: schema.description,
 					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
-							PROPERTY_TYPE: translateFieldType(schemas, property),
-							PROPERTY_OPTIONS: getEnumEntries(schemas, property),
+							PROPERTY_TYPE: translateFieldType(allSchemas, property),
+							PROPERTY_OPTIONS: getEnumEntries(allSchemas, property),
 							PROPERTY_DESCRIPTION: property.description,
 							PROPERTY_REQUIRED: _.includes(schema.required, propertyName),
 							PROPERTY_UNITS: property["x-ada-units"],
@@ -292,39 +335,21 @@ function transformApiPath(request, parameters) {
 }
 
 /**
- * Discerns the typescript type for an api function
- * @param {*} requestBody
+ * Discerns the typescript type for an api function by reading
+ * the type of the request or response body type.
+ * @param {*} body - the request/response body.
  * @returns the typescript data type.
  */
-function getRequestPayloadType(requestBody) {
-	if (!requestBody) {
-		return undefined;
-	}
-
-	const contentType =
-		requestBody.content["application/json"] ||
-		requestBody.content["application/xml"] ||
-		requestBody.content["application/x-www-form-urlencoded"] ||
-		requestBody.content["text/plain"];
-
-	return translateDataType(contentType.schema, true);
-}
-
-/**
- * Retrieves the response type for an api function.
- * @param {*} response
- * @returns the typescript data type.
- */
-function getResponseType(response) {
-	if (_.isEmpty(response.content)) {
+function getHttpBodyType(body) {
+	if (_.isEmpty(body.content)) {
 		return "any";
 	}
 
 	const contentType =
-		response.content["application/json"] ||
-		response.content["application/xml"] ||
-		response.content["application/x-www-form-urlencoded"] ||
-		response.content["text/plain"];
+		body.content["application/json"] ||
+		body.content["application/xml"] ||
+		body.content["application/x-www-form-urlencoded"] ||
+		body.content["text/plain"];
 
 	return translateDataType(contentType.schema, true);
 }
@@ -335,7 +360,7 @@ function getResponseType(response) {
  * @returns the name of the schema.
  */
 function getSchemaName(ref) {
-	return _(ref).split("/").last();
+	return pascalCase(_(ref).split("/").last());
 }
 
 /**
@@ -349,6 +374,54 @@ function generateOperationId(method, path) {
 }
 
 /**
+ * Performs a union of schema properties from multiple schema.
+ * @param {Array<object>} allSchemas - the master list of schemas.
+ * @param {Array<object>} schemas - list of schema to combine properties of.
+ * @returns an object that is the union of all schema definitions.
+ */
+function unifyModel(allSchemas, schemas) {
+	let combinedSchemas = {};
+
+	/**
+	 * Gets the schema object by name.
+	 * @param {string} schemaRef - the schema reference string.
+	 * @returns the schema object.
+	 */
+	const getSchema = (schemaRef) => {
+		const externalSchema = allSchemas[getSchemaName(schemaRef)];
+		if (externalSchema.$ref) {
+			return getSchema(externalSchema.$ref);
+		} else {
+			return externalSchema;
+		}
+	};
+
+	// Resolves the schema definition for each entry in the list.
+	const determinedSchemas = _.map(schemas, (schema) => {
+		if (schema.$ref) {
+			return getSchema(schema.$ref);
+		} else {
+			return schema;
+		}
+	});
+
+	// Combine schemas using left join logic.
+	_.forEach(determinedSchemas, (schema) => {
+		combinedSchemas = _.mergeWith(
+			combinedSchemas,
+			schema,
+			// combine array values instead of replacement
+			(objectValue, sourceValue) => {
+				if (_.isArray(objectValue)) {
+					return objectValue.concat(sourceValue);
+				}
+			}
+		);
+	});
+	return combinedSchemas;
+}
+
+/**
  * Translates a data type from OpenAPI to a Typescript data type (if it is not common between them).
  * For more info on OpenAPI data types https://swagger.io/docs/specification/data-models/data-types/
  * @param {object} schema
@@ -357,8 +430,6 @@ function generateOperationId(method, path) {
  */
 function translateDataType(schema, isForeignReference = false) {
 	let propertyType;
-
-	console.log(schema);
 
 	if (!schema.type && schema.$ref) {
 		propertyType = _.join(
@@ -391,8 +462,6 @@ function translateDataType(schema, isForeignReference = false) {
 
 			propertyType = `Array<${fullTypePath || schema.items.type}>`;
 		}
-	} else if (schema.type === "boolean") {
-		propertyType = "boolean";
 	} else if (schema.type === "object") {
 		propertyType = "Record<string, unknown>";
 	} else {
