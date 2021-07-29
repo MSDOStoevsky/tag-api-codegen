@@ -428,9 +428,9 @@ function unifyModel(allSchemas, schemas) {
 			combinedSchemas,
 			schema,
 			// combine array values instead of replacement
-			(objValue, srcValue) => {
-				if (_.isArray(objValue)) {
-					return objValue.concat(srcValue);
+			(objectValue, sourceValue) => {
+				if (_.isArray(objectValue)) {
+					return objectValue.concat(sourceValue);
 				}
 			}
 		);
