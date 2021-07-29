@@ -394,7 +394,7 @@ function generateOperationId(method, path) {
  * Performs a union of schema properties from multiple schema.
  * @param {Array<object>} allSchemas - the master list of schemas.
  * @param {Array<object>} schemas - list of schema to combine properties of.
- * @returns an object that is the union of all properties.
+ * @returns an object that is the union of all schema definitions.
  */
 function unifyModel(allSchemas, schemas) {
 	let combinedProperties = {};
