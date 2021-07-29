@@ -7,6 +7,11 @@ This project aims to provide a simple single purpose generation for typescript a
 
 Current code generators for react and typescript output code fashioned to a specific request library, but to accomodate multiple wrappers that developers may use in their own projects the library is likely fetch. This project aims to focus the generation to only one library: Axios. Ideally this prevents initial development to adapt the code generator to fit to your project.
 
+## Installation
+
+If installing from a cloned repo, navigate to the root directory and then proceed with the following command:
+`yarn install -g/ npm install -g`
+
 ## Usage
 
 `npx taggem [-m] [--monolith] [path/to/input.y(a)ml] [path/to/output/]`
