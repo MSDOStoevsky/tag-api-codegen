@@ -397,7 +397,7 @@ function generateOperationId(method, path) {
  * @returns an object that is the union of all schema definitions.
  */
 function unifyModel(allSchemas, schemas) {
-	let combinedProperties = {};
+	let combinedSchemas = {};
 
 	/**
 	 * Gets the schema object by name.
@@ -424,8 +424,8 @@ function unifyModel(allSchemas, schemas) {
 
 	// Combine schemas using left join logic.
 	_.forEach(determinedSchemas, (schema) => {
-		combinedProperties = _.mergeWith(
-			combinedProperties,
+		combinedSchemas = _.mergeWith(
+			combinedSchemas,
 			schema,
 			// combine array values instead of replacement
 			(objValue, srcValue) => {
@@ -435,7 +435,7 @@ function unifyModel(allSchemas, schemas) {
 			}
 		);
 	});
-	return combinedProperties;
+	return combinedSchemas;
 }
 
 /**
