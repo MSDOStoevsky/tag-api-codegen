@@ -479,8 +479,6 @@ function translateDataType(schema, isForeignReference = false) {
 
 			propertyType = `Array<${fullTypePath || schema.items.type}>`;
 		}
-	} else if (schema.type === "boolean") {
-		propertyType = "boolean";
 	} else if (schema.type === "object") {
 		propertyType = "Record<string, unknown>";
 	} else {
