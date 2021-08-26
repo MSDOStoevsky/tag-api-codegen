@@ -45,7 +45,7 @@ export function {{FUNCTION_NAME}}(
 ): Promise<AxiosResponse<{{{FUNCTION_RESPONSE}}}>> {
 	return axios.request<{{{FUNCTION_RESPONSE}}}>({
 		headers: headers,
-		url: `${basePathOverride || BASE_PATH}{{{REQUEST_PATH}}}{{#REQUEST_QUERY}}?{{QUERY_NAME}}={{QUERY_VALUE_PATH}}{{/REQUEST_QUERY}}`,
+		url: `${basePathOverride || BASE_PATH}{{{REQUEST_PATH}}}{{#QUERY_FLAG}}?{{/QUERY_FLAG}}{{#REQUEST_QUERY}}{{QUERY_NAME}}={{QUERY_VALUE_PATH}}&{{/REQUEST_QUERY}}`,
 		method: "{{REQUEST_METHOD}}",
 		data: payload,
 		cancelToken: cancelToken

@@ -110,7 +110,16 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						return parameter.in === "query";
 					});
 
-					const headQueryName = !_.isEmpty(queryParams) && _.head(queryParams).name;
+					// build query param objects to insert into url
+					let queryStrings = new Array();
+					if (!_.isEmpty(queryParams)) {
+						_.map(queryParams, (param) => {
+							queryStrings.push({
+								QUERY_NAME: param.name,
+								QUERY_VALUE_PATH: `\${params.${param.name}}`
+							});
+						});
+					}
 
 					return {
 						FUNCTION_SUMMARY: pathConfig.summary,
@@ -131,10 +140,13 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
 						// Currently only supporting one query param.
-						REQUEST_QUERY: headQueryName && {
-							QUERY_NAME: headQueryName,
-							QUERY_VALUE_PATH: `\${params.${headQueryName}}`
-						}
+						// REQUEST_QUERY: headQueryName && {
+						// 	QUERY_NAME: headQueryName,
+						// 	QUERY_VALUE_PATH: `\${params.${headQueryName}}`
+						// }
+
+						QUERY_FLAG: queryStrings.length > 0,
+						REQUEST_QUERY: queryStrings
 					};
 				})
 			};
