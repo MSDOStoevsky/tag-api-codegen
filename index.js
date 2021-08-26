@@ -139,12 +139,6 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						FUNCTION_RESPONSE: getHttpBodyType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
-						// Currently only supporting one query param.
-						// REQUEST_QUERY: headQueryName && {
-						// 	QUERY_NAME: headQueryName,
-						// 	QUERY_VALUE_PATH: `\${params.${headQueryName}}`
-						// }
-
 						QUERY_FLAG: queryStrings.length > 0,
 						REQUEST_QUERY: queryStrings
 					};
