@@ -130,7 +130,8 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							FUNCTION_PARAM_CONFIGS: _.map(pathConfig.parameters, (parameter) => {
 								return {
 									FUNCTION_PARAM: parameter.name,
-									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub"
+									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub",
+									FUNCTION_PARAM_OPTIONAL: parameter.required
 								};
 							})
 						},
