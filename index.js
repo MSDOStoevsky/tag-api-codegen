@@ -106,20 +106,12 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 				TYPES_DIRECTORY: isApiMonolith ? "../apiModelTypes" : "./apiModelTypes",
 				BASE_PATH: serviceFileBasePath,
 				FUNCTIONS: _.map(paths, (pathConfig) => {
-					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
-						return parameter.in === "query";
+					const pathParams = _.filter(pathConfig.parameters, (parameter) => {
+						return _.toLower(parameter.in) === "path";
 					});
-
-					// build query param objects to insert into url
-					let queryStrings = new Array();
-					if (!_.isEmpty(queryParams)) {
-						_.map(queryParams, (param) => {
-							queryStrings.push({
-								QUERY_NAME: param.name,
-								QUERY_VALUE_PATH: `\${params.${param.name}}`
-							});
-						});
-					}
+					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
+						return _.toLower(parameter.in) === "query";
+					});
 
 					return {
 						FUNCTION_SUMMARY: pathConfig.summary,
@@ -127,7 +119,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							pathConfig.operationId ||
 							generateOperationId(pathConfig.method, pathConfig.path),
 						FUNCTION_PARAMS: pathConfig.parameters && {
-							FUNCTION_PARAM_CONFIGS: _.map(pathConfig.parameters, (parameter) => {
+							FUNCTION_PARAM_CONFIGS: _.map(pathParams, (parameter) => {
 								return {
 									FUNCTION_PARAM: parameter.name,
 									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub",
@@ -135,13 +127,20 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 								};
 							})
 						},
+						QUERY_PARAMS: queryParams && {
+							QUERY_PARAM_CONFIGS: _.map(queryParams, (parameter) => {
+								return {
+									QUERY_PARAM: parameter.name,
+									QUERY_PARAM_DESCRIPTION: parameter.description || "stub",
+									QUERY_PARAM_OPTIONAL: parameter.required
+								};
+							})
+						},
 						FUNCTION_PAYLOAD:
 							pathConfig.requestBody && getHttpBodyType(pathConfig.requestBody),
 						FUNCTION_RESPONSE: getHttpBodyType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
-						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
-						QUERY_FLAG: queryStrings.length > 0,
-						REQUEST_QUERY: queryStrings
+						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
 				})
 			};
