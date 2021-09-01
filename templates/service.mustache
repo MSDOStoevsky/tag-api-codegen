@@ -57,7 +57,7 @@ export function {{FUNCTION_NAME}}(
 	headers: Record<string, unknown>,
 	cancelToken?: CancelToken,
 	basePathOverride?: string,
-	queryParameters?: {{^FUNCTION_PARAMS}}undefined{{/FUNCTION_PARAMS}}{{#FUNCTION_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/FUNCTION_PARAMS}} | undefined
+	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined
 ): Promise<AxiosResponse<{{{FUNCTION_RESPONSE}}}>> {
 	return axios.request<{{{FUNCTION_RESPONSE}}}>({
 		headers: headers,
