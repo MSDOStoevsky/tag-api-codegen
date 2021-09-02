@@ -123,7 +123,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 								return {
 									FUNCTION_PARAM: parameter.name,
 									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub",
-									FUNCTION_PARAM_OPTIONAL: parameter.required
+									FUNCTION_PARAM_REQUIRED: parameter.required
 								};
 							})
 						},
@@ -132,7 +132,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 								return {
 									QUERY_PARAM: parameter.name,
 									QUERY_PARAM_DESCRIPTION: parameter.description || "stub",
-									QUERY_PARAM_OPTIONAL: parameter.required
+									QUERY_PARAM_REQUIRED: parameter.required
 								};
 							})
 						},

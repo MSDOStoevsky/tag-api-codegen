@@ -22,7 +22,7 @@ export interface {{FUNCTION_NAME}}Params {
 	/**
 	 * {{FUNCTION_PARAM_DESCRIPTION}}
 	 */
-	{{FUNCTION_PARAM}}{{^FUNCTION_PARAM_OPTIONAL}}?{{/FUNCTION_PARAM_OPTIONAL}}: string;
+	{{FUNCTION_PARAM}}{{^FUNCTION_PARAM_REQUIRED}}?{{/FUNCTION_PARAM_REQUIRED}}: string;
 	{{/FUNCTION_PARAM_CONFIGS}}
 }
 {{/FUNCTION_PARAMS}}
@@ -36,7 +36,7 @@ export interface {{FUNCTION_NAME}}QueryParams {
 	/**
 	 * {{QUERY_PARAM_DESCRIPTION}}
 	 */
-	{{QUERY_PARAM}}{{^QUERY_PARAM_OPTIONAL}}?{{/QUERY_PARAM_OPTIONAL}}: string;
+	{{QUERY_PARAM}}{{^QUERY_PARAM_REQUIRED}}?{{/QUERY_PARAM_REQUIRED}}: string;
 	{{/QUERY_PARAM_CONFIGS}}
 }
 {{/QUERY_PARAMS}}
@@ -47,8 +47,8 @@ export interface {{FUNCTION_NAME}}QueryParams {
  * @param payload - the request payload (or undefined).
  * @param headers - the request headers.
  * @param cancelToken - optional cancel token to cancel this request.
+ * @param queryParameters - optional request query parameters (or undefined).
  * @param basePathOverride - optional override to the base path.
- * @param queryParameters - The request query parameters (or undefined).
  * @returns api request configuration data.
  */
 export function {{FUNCTION_NAME}}(
@@ -56,8 +56,8 @@ export function {{FUNCTION_NAME}}(
 	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{{.}}}{{/FUNCTION_PAYLOAD}},
 	headers: Record<string, unknown>,
 	cancelToken?: CancelToken,
-	basePathOverride?: string,
-	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined
+	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined,
+	basePathOverride?: string
 ): Promise<AxiosResponse<{{{FUNCTION_RESPONSE}}}>> {
 	return axios.request<{{{FUNCTION_RESPONSE}}}>({
 		headers: headers,
