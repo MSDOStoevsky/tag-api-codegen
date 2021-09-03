@@ -106,11 +106,12 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 				TYPES_DIRECTORY: isApiMonolith ? "../apiModelTypes" : "./apiModelTypes",
 				BASE_PATH: serviceFileBasePath,
 				FUNCTIONS: _.map(paths, (pathConfig) => {
-					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
-						return parameter.in === "query";
+					const pathParams = _.filter(pathConfig.parameters, (parameter) => {
+						return _.toLower(parameter.in) === "path";
 					});
-
-					const headQueryName = !_.isEmpty(queryParams) && _.head(queryParams).name;
+					const queryParams = _.filter(pathConfig.parameters, (parameter) => {
+						return _.toLower(parameter.in) === "query";
+					});
 
 					return {
 						FUNCTION_SUMMARY: pathConfig.summary,
@@ -118,10 +119,20 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							pathConfig.operationId ||
 							generateOperationId(pathConfig.method, pathConfig.path),
 						FUNCTION_PARAMS: pathConfig.parameters && {
-							FUNCTION_PARAM_CONFIGS: _.map(pathConfig.parameters, (parameter) => {
+							FUNCTION_PARAM_CONFIGS: _.map(pathParams, (parameter) => {
 								return {
 									FUNCTION_PARAM: parameter.name,
-									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub"
+									FUNCTION_PARAM_DESCRIPTION: parameter.description || "stub",
+									FUNCTION_PARAM_REQUIRED: parameter.required
+								};
+							})
+						},
+						QUERY_PARAMS: queryParams && {
+							QUERY_PARAM_CONFIGS: _.map(queryParams, (parameter) => {
+								return {
+									QUERY_PARAM: parameter.name,
+									QUERY_PARAM_DESCRIPTION: parameter.description || "stub",
+									QUERY_PARAM_REQUIRED: parameter.required
 								};
 							})
 						},
@@ -129,12 +140,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							pathConfig.requestBody && getHttpBodyType(pathConfig.requestBody),
 						FUNCTION_RESPONSE: getHttpBodyType(pathConfig.responses["200"]),
 						REQUEST_METHOD: pathConfig.method,
-						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters),
-						// Currently only supporting one query param.
-						REQUEST_QUERY: headQueryName && {
-							QUERY_NAME: headQueryName,
-							QUERY_VALUE_PATH: `\${params.${headQueryName}}`
-						}
+						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
 				})
 			};
