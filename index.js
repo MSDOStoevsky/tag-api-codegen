@@ -256,13 +256,17 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 				return !schema.oneOf;
 			})
 			.map((schema, schemaName) => {
+				//console.log("schema map(): ", schema, "schema name: ", schemaName);
 				if (schema.allOf) {
+					//console.log("schema.allOf: ", schema.allOf);
 					schema = unifyModel(allSchemas, schema.allOf);
+					//console.log("after unifying: ", schema);
 				}
 				return {
 					MODEL_NAME: pascalCase(schemaName),
 					MODEL_DESCRIPTION: schema.description,
 					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
+						// console.log("property: ", property, "property name: ", propertyName);
 						return {
 							PROPERTY_NAME: propertyName,
 							PROPERTY_TYPE: translateFieldType(allSchemas, property),
@@ -301,7 +305,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 };
 
 /**
- * Locates the enum entries for a given schema.
+ * Locates the enum entries for a given schema (also support Array Types).
  * If the schema is not an enum then this will return `undefined`
  * @param {array} schemas - the list of all schemas in this api.
  * @param {object} schema - the current schema to extract enum entries, if they exist.
@@ -311,10 +315,18 @@ function getEnumEntries(schemas, schema) {
 	const enumItemsObject = {
 		ITEMS: []
 	};
-
-	if (schema.enum) {
+	if (schema.enum && schema.type !== "number") {
+		enumItemsObject.ITEMS = _.map(schema.enum, (value) => {
+			return `"${value}"`;
+		});
+		return enumItemsObject;
+	} else if (schema.enum && schema.type === "number") {
 		enumItemsObject.ITEMS = schema.enum;
 		return enumItemsObject;
+	} else if (schema.type == "array") {
+		if (schema.items.$ref) {
+			return getEnumEntries(schemas, schemas[getSchemaName(schema.items.$ref)]);
+		}
 	} else if (schema.$ref) {
 		return getEnumEntries(schemas, schemas[getSchemaName(schema.$ref)]);
 	} else {
@@ -366,6 +378,8 @@ function getHttpBodyType(body) {
  * @returns the name of the schema.
  */
 function getSchemaName(ref) {
+	// console.log("inside gsn: ", ref);
+	// console.log("sanitizedname: ", pascalCase(_(ref).split("/").last()));
 	return pascalCase(_(ref).split("/").last());
 }
 
@@ -387,6 +401,7 @@ function generateOperationId(method, path) {
  */
 function unifyModel(allSchemas, schemas) {
 	let combinedSchemas = {};
+	let oneOfSchemas = [];
 
 	/**
 	 * Gets the schema object by name.
@@ -394,33 +409,91 @@ function unifyModel(allSchemas, schemas) {
 	 * @returns the schema object.
 	 */
 	const getSchema = (schemaRef) => {
+		console.log("schemeRef: ", schemaRef);
 		const externalSchema = allSchemas[getSchemaName(schemaRef)];
+		console.log("schema name: ", getSchemaName(schemaRef));
+		console.log("externalSchema: ", externalSchema);
+		//console.log("masterlist: ", allSchemas);
 		if (externalSchema.$ref) {
+			console.log("THERE IS A REF");
 			return getSchema(externalSchema.$ref);
-		} else {
+		} /* else if (externalSchema.oneOf) {
+			console.log("closer: ", externalSchema.oneOf);
+			return getSchema(externalSchema.oneOf.$ref);
+		}*/ else {
 			return externalSchema;
 		}
 	};
 
 	// Resolves the schema definition for each entry in the list.
-	const determinedSchemas = _.map(schemas, (schema) => {
+	let determinedSchemas = _.map(schemas, (schema) => {
 		if (schema.$ref) {
+			// console.log("first if schema ref: ", schema.$ref);
 			return getSchema(schema.$ref);
+		} else if (schema.oneOf) {
+			// re-visit
+			_.map(schema.oneOf, (ref) => {
+				console.log("got schema.oneOf: ", ref.$ref);
+				oneOfSchemas.push(getSchema(ref.$ref));
+			});
 		} else {
 			return schema;
 		}
 	});
-
+	// console.log("oneOfSchemas: ", oneOfSchemas);
+	_.map(oneOfSchemas, (value) => {
+		determinedSchemas.push(value);
+	});
 	// Combine schemas using left join logic.
 	_.forEach(determinedSchemas, (schema) => {
+		console.log("combinedSchemas: ", combinedSchemas);
 		combinedSchemas = _.mergeWith(
 			combinedSchemas,
 			schema,
 			// combine array values instead of replacement
 			(objectValue, sourceValue) => {
+				//console.log("objectValue: ", objectValue, "sourceValue: ", sourceValue);
 				if (_.isArray(objectValue)) {
+					console.log(
+						"isArray, concatenating... ",
+						"objectValue: ",
+						objectValue,
+						" sourceValue: ",
+						sourceValue
+					);
 					return objectValue.concat(sourceValue);
-				}
+				} /* else if (_.isObject(objectValue)) {
+					if (objectValue.type === "array") {
+						console.log("CLOSERIMAFLMASAS");
+						console.log("OBJECT ITEMS: ", objectValue.items);
+						console.log("SOURCE ITEMS: ", sourceValue.items);
+						// objectValue.items.concat(sourceValue.items);
+						const myobject = {
+							oneOf: [
+								{ $ref: "#/components/schemas/AdaJsonPollEventPlan" },
+								{ $ref: "#/components/schemas/AdaJsonPopupPlan" },
+								{ $ref: "#/components/schemas/AdaProtobufPlan" }
+							]
+						};
+						// _.merge(
+						// 	objectValue.items,
+						// 	_.map(sourceValue.items.oneOf, (item, index) => {
+						// 		console.log("INSIDE MAP THE ITEM: ", item);
+						// 		return item;
+						// 	})
+						// );
+						// console.log("MERGED OBJECT ITEMS: ", objectValue.items);
+						// return _.merge(objectValue.items, sourceValue.items);
+						return myobject;
+					}
+					console.log(
+						"OBJECT TYPE WAS AN ARRAY: ",
+						objectValue,
+						"Source Value: ",
+						sourceValue
+					);
+				} */
+				//if (object.property.is.array.then) concatenate to array
 			}
 		);
 	});
@@ -436,26 +509,52 @@ function unifyModel(allSchemas, schemas) {
  */
 function translateDataType(schema, isForeignReference = false) {
 	let propertyType;
-
+	console.log("translatedDataType: ", schema);
 	if (!schema.type && schema.$ref) {
+		console.log("inside !schema.type && schema.$ref");
 		propertyType = _.join(
 			[isForeignReference ? "ApiModelTypes." : undefined, getSchemaName(schema.$ref)],
 			""
 		);
+		console.log("propertyType = ", propertyType);
 	} else if (schema.enum) {
+		console.log("inside schema.enum");
 		// assumption that enums are handled outside of this context.
 		propertyType = "any";
+		console.log("propertyType = ", propertyType);
 	} else if (schema.oneOf) {
+		console.log("inside schema.oneOf");
 		const types = _.map(schema.oneOf, (these) => {
 			return translateDataType(these, isForeignReference);
 		});
 		propertyType = _.join(types, " | ");
+		console.log("propertyType = ", propertyType);
 	} else if (schema.type === "integer") {
+		console.log("inside schema.type === integer");
 		propertyType = "number";
+		console.log("propertyType = ", propertyType);
 	} else if (schema.type === "array") {
+		console.log("inside schema.type === array");
 		if (!schema.items.type) {
-			propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
+			console.log("schema.items: ", schema.items);
+			// THEORY TEST - to support when a schema has ref types that has both a $ref and oneOf array type, see PolicyResponse
+			if (schema.items.oneOf && schema.items.$ref) {
+				console.log("inside schema.items.oneOf && schema.items.$ref: ", schema.items.oneOf);
+				const refSchema = { $ref: schema.items.$ref }; //add outlier $ref schema
+				schema.items.oneOf.push(refSchema); //add it to oneOf block
+				const newOneOf = schema.items.oneOf; //[one of...]
+				schema.items = { oneOf: newOneOf };
+				propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
+				console.log("propertyType = ", propertyType);
+			} else {
+				propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
+				console.log("propertyType = ", propertyType);
+			}
+			// END OF TEST
+			// propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
+			// console.log("propertyType = ", propertyType);
 		} else {
+			console.log("inside schema.type === array | else block ");
 			const fullTypePath =
 				getSchemaName(schema.items.$ref) &&
 				_.join(
@@ -467,11 +566,16 @@ function translateDataType(schema, isForeignReference = false) {
 				);
 
 			propertyType = `Array<${fullTypePath || schema.items.type}>`;
+			console.log("propertyType = ", propertyType);
 		}
 	} else if (schema.type === "object") {
+		console.log("inside schema.type === object");
 		propertyType = "Record<string, unknown>";
+		console.log("propertyType = ", propertyType);
 	} else {
+		console.log("inside the last else");
 		propertyType = schema.type;
+		console.log("propertyType = ", propertyType);
 	}
 
 	return propertyType;

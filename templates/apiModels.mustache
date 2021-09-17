@@ -59,10 +59,10 @@ export interface FieldConfig {
      */
     maximum: number | undefined;
 	/**
-	 * Options available if the fieldType is of type {@link FieldType.ENUM}.
-     * Undefined if the fieldType is not of type {@link FieldType.ENUM}.
+	 * Options available if the fieldType is of type {@link FieldType.ENUM} or {@link FieldType.ARRAY}.
+     * Undefined if the fieldType is not of type {@link FieldType.ENUM} or type {@link FieldType.ARRAY}.
 	 */
-	options: Array<string> | undefined;
+	options: Array<any> | undefined;
 }
 
 /**
@@ -105,7 +105,7 @@ export const {{MODEL_NAME}}: ApiModel<ApiModelTypes.{{MODEL_NAME}}> = {
             units: {{^PROPERTY_UNITS}}undefined{{/PROPERTY_UNITS}}{{#PROPERTY_UNITS}}"{{.}}"{{/PROPERTY_UNITS}},
             minimum: {{^PROPERTY_MINIMUM}}undefined{{/PROPERTY_MINIMUM}}{{PROPERTY_MINIMUM}},
             maximum: {{^PROPERTY_MAXIMUM}}undefined{{/PROPERTY_MAXIMUM}}{{PROPERTY_MAXIMUM}},
-            options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}"{{.}}",{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
+            options: {{^PROPERTY_OPTIONS}}undefined{{/PROPERTY_OPTIONS}}{{#PROPERTY_OPTIONS}}[{{#ITEMS}}{{{.}}},{{/ITEMS}}],{{/PROPERTY_OPTIONS}}
         },
         {{/MODEL_PROPERTIES}}
     }
