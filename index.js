@@ -319,7 +319,7 @@ function getEnumEntries(schemas, schema) {
 	} else if (schema.enum && schema.type === "number") {
 		enumItemsObject.ITEMS = schema.enum;
 		return enumItemsObject;
-	} else if (schema.type == "array") {
+	} else if (schema.type === "array") {
 		if (schema.items.$ref) {
 			return getEnumEntries(schemas, schemas[getSchemaName(schema.items.$ref)]);
 		}
