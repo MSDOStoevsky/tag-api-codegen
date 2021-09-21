@@ -395,7 +395,6 @@ function generateOperationId(method, path) {
  */
 function unifyModel(allSchemas, schemas) {
 	let combinedSchemas = {};
-	let oneOfSchemas = [];
 
 	/**
 	 * Gets the schema object by name.
@@ -404,7 +403,6 @@ function unifyModel(allSchemas, schemas) {
 	 */
 	const getSchema = (schemaRef) => {
 		const externalSchema = allSchemas[getSchemaName(schemaRef)];
-
 		if (externalSchema.$ref) {
 			return getSchema(externalSchema.$ref);
 		} else {
@@ -413,20 +411,14 @@ function unifyModel(allSchemas, schemas) {
 	};
 
 	// Resolves the schema definition for each entry in the list.
-	let determinedSchemas = _.map(schemas, (schema) => {
+	const determinedSchemas = _.map(schemas, (schema) => {
 		if (schema.$ref) {
 			return getSchema(schema.$ref);
 		} else if (schema.oneOf) {
-			_.map(schema.oneOf, (ref) => {
-				oneOfSchemas.push(getSchema(ref.$ref));
-			});
+			return unifyModel(allSchemas, schema.oneOf);
 		} else {
 			return schema;
 		}
-	});
-
-	_.map(oneOfSchemas, (value) => {
-		determinedSchemas.push(value);
 	});
 
 	// Combine schemas using left join logic.
@@ -437,7 +429,15 @@ function unifyModel(allSchemas, schemas) {
 			// combine array values instead of replacement
 			(objectValue, sourceValue) => {
 				if (_.isArray(objectValue)) {
-					return objectValue.concat(sourceValue);
+					return _.union(objectValue, sourceValue);
+				}
+				if (objectValue && objectValue.type === "array") {
+					return {
+						...objectValue,
+						items: {
+							oneOf: _.concat(objectValue.items, sourceValue.items)
+						}
+					};
 				}
 			}
 		);
