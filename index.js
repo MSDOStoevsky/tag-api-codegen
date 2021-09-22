@@ -472,37 +472,7 @@ function translateDataType(schema, isForeignReference = false) {
 		propertyType = "number";
 	} else if (schema.type === "array") {
 		if (!schema.items.type) {
-			// To support when a schema has an array type consisting of references to oneOf $refs.
-			// See PolicyResponse -> AdaJsonPolicy
-			/*
-			e.g..
-			Transform 
-					{
-						'$ref': '#/components/schemas/AdaProtobufPlan',
-						oneOf: [
-							{ '$ref': '#/components/schemas/AdaJsonPollEventPlan' },
-							{ '$ref': '#/components/schemas/AdaJsonPopupPlan' }
-						]
-					}
-			To
-					{
-						oneOf: [
-							{ '$ref': '#/components/schemas/AdaJsonPollEventPlan' },
-							{ '$ref': '#/components/schemas/AdaJsonPopupPlan' },
-							{ '$ref': '#/components/schemas/AdaProtobufPlan' }
-						]
-					}
-			For correct handling in translateDataType(). 
-			*/
-			if (schema.items.oneOf && schema.items.$ref) {
-				const outsideSchema = { $ref: schema.items.$ref };
-				schema.items.oneOf.push(outsideSchema);
-				const newOneOf = schema.items.oneOf;
-				schema.items = { oneOf: newOneOf };
-				propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
-			} else {
-				propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
-			}
+			propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
 		} else {
 			const fullTypePath =
 				getSchemaName(schema.items.$ref) &&
