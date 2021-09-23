@@ -301,7 +301,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 };
 
 /**
- * Locates the enum entries for a given schema.
+ * Locates the enum entries for a given schema (also support Array Types).
  * If the schema is not an enum then this will return `undefined`
  * @param {array} schemas - the list of all schemas in this api.
  * @param {object} schema - the current schema to extract enum entries, if they exist.
@@ -311,10 +311,18 @@ function getEnumEntries(schemas, schema) {
 	const enumItemsObject = {
 		ITEMS: []
 	};
-
-	if (schema.enum) {
+	if (schema.enum && schema.type !== "number") {
+		enumItemsObject.ITEMS = _.map(schema.enum, (value) => {
+			return `"${value}"`;
+		});
+		return enumItemsObject;
+	} else if (schema.enum && schema.type === "number") {
 		enumItemsObject.ITEMS = schema.enum;
 		return enumItemsObject;
+	} else if (schema.type === "array") {
+		if (schema.items.$ref) {
+			return getEnumEntries(schemas, schemas[getSchemaName(schema.items.$ref)]);
+		}
 	} else if (schema.$ref) {
 		return getEnumEntries(schemas, schemas[getSchemaName(schema.$ref)]);
 	} else {
@@ -406,6 +414,8 @@ function unifyModel(allSchemas, schemas) {
 	const determinedSchemas = _.map(schemas, (schema) => {
 		if (schema.$ref) {
 			return getSchema(schema.$ref);
+		} else if (schema.oneOf) {
+			return unifyModel(allSchemas, schema.oneOf);
 		} else {
 			return schema;
 		}
@@ -419,7 +429,15 @@ function unifyModel(allSchemas, schemas) {
 			// combine array values instead of replacement
 			(objectValue, sourceValue) => {
 				if (_.isArray(objectValue)) {
-					return objectValue.concat(sourceValue);
+					return _.union(objectValue, sourceValue);
+				}
+				if (objectValue && objectValue.type === "array") {
+					return {
+						...objectValue,
+						items: {
+							oneOf: _.concat(objectValue.items, sourceValue.items)
+						}
+					};
 				}
 			}
 		);
@@ -466,7 +484,9 @@ function translateDataType(schema, isForeignReference = false) {
 					""
 				);
 
-			propertyType = `Array<${fullTypePath || schema.items.type}>`;
+			propertyType = `Array<${
+				fullTypePath || translateDataType(schema.items, isForeignReference)
+			}>`;
 		}
 	} else if (schema.type === "object") {
 		propertyType = "Record<string, unknown>";
