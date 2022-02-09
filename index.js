@@ -1,5 +1,6 @@
 // AUTHOR: Dylan Lettinga
 // EMAIL: msdostoevsky@protonmail.com
+// CONTRIBUTORS: see CONTRIBUTORS.md
 
 const fs = require("fs");
 const Mustache = require("mustache");
