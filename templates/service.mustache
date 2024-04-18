@@ -5,7 +5,7 @@
 /* eslint-disable  @typescript-eslint/no-empty-interface */
 /* eslint-disable  @typescript-eslint/no-unused-vars */
 import * as ApiModelTypes from "{{{TYPES_DIRECTORY}}}";
-import axios, { AxiosResponse, CancelToken } from "axios";
+import axios, { AxiosResponse, CancelToken{{#USE_NEW_AXIOS_TYPES}}, RawAxiosRequestHeaders{{/USE_NEW_AXIOS_TYPES}} } from "axios";
 
 /**
  * The service base path.
@@ -54,7 +54,7 @@ export interface {{FUNCTION_NAME}}QueryParams {
 export function {{FUNCTION_NAME}}(
 	params: {{^FUNCTION_PARAMS}}undefined{{/FUNCTION_PARAMS}}{{#FUNCTION_PARAMS}}{{FUNCTION_NAME}}Params{{/FUNCTION_PARAMS}},
 	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{{.}}}{{/FUNCTION_PAYLOAD}},
-	headers: Record<string, unknown>,
+	headers: {{#USE_NEW_AXIOS_TYPES}}RawAxiosRequestHeaders{{/USE_NEW_AXIOS_TYPES}}{{^USE_NEW_AXIOS_TYPES}}Record<string, unknown>{{/USE_NEW_AXIOS_TYPES}},
 	cancelToken?: CancelToken,
 	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined,
 	basePathOverride?: string
