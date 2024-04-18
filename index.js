@@ -147,7 +147,8 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
-				})
+				}),
+				USE_NEW_AXIOS_TYPES: useNewAxiosHeaderTypes 
 			};
 
 			if (!fs.existsSync(serviceDirectory)) {
@@ -287,7 +288,6 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 
 		const mustacheContext = {
 			MODELS: models,
-			USE_NEW_AXIOS_TYPES: useNewAxiosHeaderTypes 
 		};
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
