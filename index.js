@@ -287,7 +287,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 			.value();
 
 		const mustacheContext = {
-			MODELS: models,
+			MODELS: models
 		};
 
 		const fileContent = Mustache.render(_.toString(data), mustacheContext);
