@@ -31,7 +31,7 @@ const pascalCase = (string) => {
  * @param {string} userProvidedServiceName - Optional service name for api file.
  */
 exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
-	const isAxiosVersionZero = axiosVersion >= 1;
+	const isAxiosVersionZero = axiosVersion < 1;
 	const serviceDirectoryName =
 		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
 
