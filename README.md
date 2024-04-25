@@ -22,6 +22,10 @@ treats each tag as a servlet. It may not save your api, but it will save your ey
 `npx taggem [-s] [--service] [path/to/input.y(a)ml] [path/to/output/]`
 This runs the generator in "microservice mode" where your generated api code will be placed into a single directory of the same name as the api `title`. This ignores `tags` for further organization.
 
+## Axios Version
+
+The code generator currently supports Axios version < 1 by default. In Axios version 1.0 header types were introduced as a breaking change. Passing in the Axios version your project uses as the `v` argument generates correct header types in the service files. See https://github.com/axios/axios/blob/v1.x/CHANGELOG.md#100---2022-10-04 for more information on 1.0 changes.
+
 ## Results
 
 -   One or more directories (depending on how the generator was invoked) containing the a file with typescript functions that will return a configuration object detailing how to access an api resource. E.g. (assuming -\-m),
