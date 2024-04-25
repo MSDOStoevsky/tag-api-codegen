@@ -33,8 +33,6 @@ const pascalCase = (string) => {
 exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
 	// Axios header typings change at version 1.0. See https://github.com/axios/axios/blob/v1.x/CHANGELOG.md#100---2022-10-04
 	const useNewAxiosHeaderTypes = axiosVersion >= 1;
-	console.log("using axios version", axiosVersion);
-	console.log('use new axios?', useNewAxiosHeaderTypes);
 	const serviceDirectoryName =
 		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
 
