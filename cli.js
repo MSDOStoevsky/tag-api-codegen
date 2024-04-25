@@ -15,7 +15,6 @@ const yargs = require("yargs")
 	.alias("m", "monolith")
 	.alias("s", "service")
 	.alias("n", "name")
-	.alias("v", "major Axios version");
 
 const argv = yargs.argv;
 
