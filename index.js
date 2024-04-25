@@ -30,7 +30,8 @@ const pascalCase = (string) => {
  * @param {boolean} isApiMonolith - flag indicating whether to treat this api as monolithic.
  * @param {string} userProvidedServiceName - Optional service name for api file.
  */
-exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName) => {
+exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
+	const isAxiosVersionZero = axiosVersion < 1;
 	const serviceDirectoryName =
 		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
 
@@ -143,7 +144,8 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						REQUEST_METHOD: pathConfig.method,
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
-				})
+				}),
+				IS_AXIOS_VERSION_ZERO: isAxiosVersionZero 
 			};
 
 			if (!fs.existsSync(serviceDirectory)) {
