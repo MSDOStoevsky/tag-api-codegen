@@ -29,6 +29,7 @@ const pascalCase = (string) => {
  * @param {string} outputDirectory - desired output directory for generated files.
  * @param {boolean} isApiMonolith - flag indicating whether to treat this api as monolithic.
  * @param {string} userProvidedServiceName - Optional service name for api file.
+ * @param {number} axiosVersion - Optional axios version to use.
  */
 exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
 	const isAxiosVersionZero = axiosVersion < 1;
