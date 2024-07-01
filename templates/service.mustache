@@ -59,7 +59,7 @@ export function {{FUNCTION_NAME}}(
 	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{{.}}}{{/FUNCTION_PAYLOAD}},
 	headers: {{^IS_AXIOS_VERSION_ZERO}}RawAxiosRequestHeaders{{/IS_AXIOS_VERSION_ZERO}}{{#IS_AXIOS_VERSION_ZERO}}Record<string, unknown>{{/IS_AXIOS_VERSION_ZERO}},
 	{{#IS_AXIOS_VERSION_ZERO}}
-	cancelToken?: cancelToken,
+	cancelToken?: CancelToken,
 	{{/IS_AXIOS_VERSION_ZERO}}
 	{{^IS_AXIOS_VERSION_ZERO}}
 	signal?: signal,
