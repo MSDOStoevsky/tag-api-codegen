@@ -46,10 +46,7 @@ export interface {{FUNCTION_NAME}}QueryParams {
  * @param params - The request parameters (or undefined).
  * @param payload - the request payload (or undefined).
  * @param headers - the request headers.
- {{#IS_AXIOS_VERSION_ZERO}}
- * @param cancelToken - optional CancelToken to cancel this request.{{/IS_AXIOS_VERSION_ZERO}}
- {{^IS_AXIOS_VERSION_ZERO}}
- * @param signal - optional AbortSignal to cancel this request.{{/IS_AXIOS_VERSION_ZERO}}
+ * @param {{#IS_AXIOS_VERSION_ZERO}}cancelToken - optional cancel token{{/IS_AXIOS_VERSION_ZERO}}{{^IS_AXIOS_VERSION_ZERO}}signal - optional AbortSignal{{/IS_AXIOS_VERSION_ZERO}} to cancel this request.
  * @param queryParameters - optional request query parameters (or undefined).
  * @param basePathOverride - optional override to the base path.
  * @returns api request configuration data.
@@ -62,7 +59,7 @@ export function {{FUNCTION_NAME}}(
 	cancelToken?: CancelToken,
 	{{/IS_AXIOS_VERSION_ZERO}}
 	{{^IS_AXIOS_VERSION_ZERO}}
-	signal?: signal,
+	signal?: AbortSignal,
 	{{/IS_AXIOS_VERSION_ZERO}}	
 	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined,
 	basePathOverride?: string
