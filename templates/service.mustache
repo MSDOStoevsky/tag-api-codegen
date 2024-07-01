@@ -55,7 +55,12 @@ export function {{FUNCTION_NAME}}(
 	params: {{^FUNCTION_PARAMS}}undefined{{/FUNCTION_PARAMS}}{{#FUNCTION_PARAMS}}{{FUNCTION_NAME}}Params{{/FUNCTION_PARAMS}},
 	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{{.}}}{{/FUNCTION_PAYLOAD}},
 	headers: {{^IS_AXIOS_VERSION_ZERO}}RawAxiosRequestHeaders{{/IS_AXIOS_VERSION_ZERO}}{{#IS_AXIOS_VERSION_ZERO}}Record<string, unknown>{{/IS_AXIOS_VERSION_ZERO}},
-	signal?: AbortSignal,
+	{{#IS_AXIOS_VERSION_ZERO}}
+	cancelToken?: cancelToken,
+	{{/IS_AXIOS_VERSION_ZERO}}
+	{{^IS_AXIOS_VERSION_ZERO}}
+	signal?: signal,
+	{{/IS_AXIOS_VERSION_ZERO}}	
 	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined,
 	basePathOverride?: string
 ): Promise<AxiosResponse<{{{FUNCTION_RESPONSE}}}>> {
@@ -66,7 +71,12 @@ export function {{FUNCTION_NAME}}(
 		method: "{{REQUEST_METHOD}}",
 		params: queryParameters,
 		data: payload,
+		{{#IS_AXIOS_VERSION_ZERO}}
+		cancelToken: cancelToken
+		{{/IS_AXIOS_VERSION_ZERO}}
+		{{^IS_AXIOS_VERSION_ZERO}}
 		signal: signal
+		{{/IS_AXIOS_VERSION_ZERO}}	
 	});
 }
 {{/FUNCTIONS}}
