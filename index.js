@@ -205,10 +205,10 @@ exports.generate = async (
 
 				let properties;
 
-				// conditionally parse an array schema based off how it is defined
+			
 				if (schema.type === "array" && schema.items) {
-					if (schema.items.type === "object") {
-						// the schema explicitly defines each property of the array object
+					// conditionally parse an array schema based off how it is defined
+					if (schema.items.type === "object" && schema.items.properties) {
 						properties = _.map(schema.items.properties, (property, propertyName) => {
 							return {
 								PROPERTY_NAME: propertyName,
@@ -220,22 +220,20 @@ exports.generate = async (
 						});
 					} else {
 						// the schema references another component via $ref and does not explicitly define it
+						const referencedSchemaName = getSchemaName(schema.items.$ref);
 						properties = {
-							PROPERTY_NAME: getSchemaName(schema.items.$ref),
+							PROPERTY_NAME: referencedSchemaName,
 							MODEL_DESCRIPTION: schema.description,
 							PROPERTY_TYPE: translateDataType(schema.items),
 							PROPERTY_OPTIONAL: !_.includes(
 								schema.required,
-								getSchemaName(schema.items.$ref)
+								referencedSchemaName
 							),
 							PROPERTY_READONLY: schema.readOnly
 						};
 					}
 				} else {
 					properties = _.map(schema.properties, (property, propertyName) => {
-						console.log("properties: ", schema.properties);
-						console.log("property: ", property);
-						console.log("propertyName: ", propertyName);
 						return {
 							PROPERTY_NAME: propertyName,
 							MODEL_DESCRIPTION: property.description,
@@ -322,10 +320,49 @@ exports.generate = async (
 				if (schema.allOf) {
 					schema = unifyModel(allSchemas, schema.allOf);
 				}
-				return {
-					MODEL_NAME: pascalCase(schemaName),
-					MODEL_DESCRIPTION: schema.description,
-					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
+
+				let properties;
+
+				
+				if (schema.type === "array" && schema.items) {
+					// conditionally parse an array schema based off how it is defined
+					if (schema.items.$ref) {
+						// schema is referencing another component
+						const referencedSchemaName = getSchemaName(schema.items.$ref);
+						properties = {
+							PROPERTY_NAME: referencedSchemaName,
+							PROPERTY_TYPE: translateFieldType(allSchemas, schema.items),
+							PROPERTY_OPTIONS: getEnumEntries(allSchemas, schema.items),
+							PROPERTY_DESCRIPTION: schema.description,
+							PROPERTY_REQUIRED: _.includes(schema.items.required, referencedSchemaName),
+							PROPERTY_UNITS: schema.items["x-ada-units"],
+							PROPERTY_FORMAT: schema.items.format,
+							PROPERTY_DEFAULT:
+								schema.items.default || generateDefaultValue(schema.items),
+							PROPERTY_MINIMUM: schema.items.minimum || schema.items.minLength,
+							PROPERTY_MAXIMUM: schema.items.maximum || schema.items.maxLength
+						};
+
+					} else if (schema.items.type === "object" && schema.items.properties) {
+
+						properties = _.map(schema.items.properties, (property, propertyName) => {
+							return {
+								PROPERTY_NAME: propertyName,
+								PROPERTY_TYPE: translateFieldType(allSchemas, property),
+								PROPERTY_OPTIONS: getEnumEntries(allSchemas, property),
+								PROPERTY_DESCRIPTION: property.description,
+								PROPERTY_REQUIRED: _.includes(schema.items.required, propertyName),
+								PROPERTY_UNITS: property["x-ada-units"],
+								PROPERTY_FORMAT: property.format,
+								PROPERTY_DEFAULT:
+									property.default || generateDefaultValue(property),
+								PROPERTY_MINIMUM: property.minimum || property.minLength,
+								PROPERTY_MAXIMUM: property.maximum || property.maxLength
+							};
+						});
+					}
+				} else { 
+					properties = _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
 							PROPERTY_TYPE: translateFieldType(allSchemas, property),
@@ -334,11 +371,17 @@ exports.generate = async (
 							PROPERTY_REQUIRED: _.includes(schema.required, propertyName),
 							PROPERTY_UNITS: property["x-ada-units"],
 							PROPERTY_FORMAT: property.format,
-							PROPERTY_DEFAULT: property.default || generateDefaultValue(property),
+							PROPERTY_DEFAULT:
+								property.default || generateDefaultValue(property),
 							PROPERTY_MINIMUM: property.minimum || property.minLength,
 							PROPERTY_MAXIMUM: property.maximum || property.maxLength
 						};
-					})
+					});
+				}
+				return {
+					MODEL_NAME: pascalCase(schemaName),
+					MODEL_DESCRIPTION: schema.description,
+					MODEL_PROPERTIES: properties
 				};
 			})
 			.value();
