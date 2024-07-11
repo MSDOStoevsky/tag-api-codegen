@@ -577,7 +577,6 @@ function translateDataType(schema, isForeignReference = false) {
 	} else if (schema.type === "integer") {
 		propertyType = "number";
 	} else if (schema.type === "array") {
-		console.log("schema is an array: ", schema);
 		if (!schema.items.type) {
 			propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
 		} else {
