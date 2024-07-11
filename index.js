@@ -16,6 +16,7 @@ const BAD_YAML_MESSAGE =
  * @example test -> Test
  * @example test text -> TestText
  * @example test-text -> TestText
+ * @example TESTTest -> TESTTest
  * @param {string} string - input string
  * @returns a string in PascalCase
  */
