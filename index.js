@@ -21,21 +21,23 @@ const BAD_YAML_MESSAGE =
  * @returns a string in PascalCase
  */
 const pascalCase = (string) => {
-    // First, split the string into words using "look-ahead" & remove whitespace
-    const words = string.split(/(?=[A-Z])|[\s-_]+/).filter(word => word.length > 0);
-    
-    return words.map((word, index) => {
-        if (word.toUpperCase() === word && word.length > 1) {
-            // If the word is all uppercase and more than one character, assume it's an acronym
-            return word;
-        } else if (index === 0 || word.length > 1) {
-            // Capitalize the first letter, lowercase the rest, unless it's a single character
-            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-        } else {
-            // For single characters (except the first word), just uppercase
-            return word.toUpperCase();
-        }
-    }).join('');
+	// First, split the string into words using "look-ahead" & remove whitespace
+	const words = string.split(/(?=[A-Z])|[\s-_]+/).filter((word) => word.length > 0);
+
+	return words
+		.map((word, index) => {
+			if (word.toUpperCase() === word && word.length > 1) {
+				// If the word is all uppercase and more than one character, assume it's an acronym
+				return word;
+			} else if (index === 0 || word.length > 1) {
+				// Capitalize the first letter, lowercase the rest, unless it's a single character
+				return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+			} else {
+				// For single characters (except the first word), just uppercase
+				return word.toUpperCase();
+			}
+		})
+		.join("");
 };
 
 /**
@@ -203,7 +205,7 @@ exports.generate = async (
 
 				let properties;
 
-				// conditionally parse an array schema based off how it is defined 
+				// conditionally parse an array schema based off how it is defined
 				if (schema.type === "array" && schema.items) {
 					if (schema.items.type === "object") {
 						// the schema explicitly defines each property of the array object
@@ -222,7 +224,10 @@ exports.generate = async (
 							PROPERTY_NAME: getSchemaName(schema.items.$ref),
 							MODEL_DESCRIPTION: schema.description,
 							PROPERTY_TYPE: translateDataType(schema.items),
-							PROPERTY_OPTIONAL: !_.includes(schema.required, getSchemaName(schema.items.$ref)),
+							PROPERTY_OPTIONAL: !_.includes(
+								schema.required,
+								getSchemaName(schema.items.$ref)
+							),
 							PROPERTY_READONLY: schema.readOnly
 						};
 					}
