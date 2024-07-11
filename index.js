@@ -46,7 +46,13 @@ const pascalCase = (string) => {
  * @param {string} userProvidedServiceName - Optional service name for api file.
  * @param {number} axiosVersion - Optional axios version to use.
  */
-exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
+exports.generate = async (
+	inputFile,
+	outputDirectory,
+	isApiMonolith,
+	userProvidedServiceName,
+	axiosVersion = 0
+) => {
 	const isAxiosVersionZero = axiosVersion < 1;
 	const serviceDirectoryName =
 		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
@@ -161,7 +167,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
 				}),
-				IS_AXIOS_VERSION_ZERO: isAxiosVersionZero 
+				IS_AXIOS_VERSION_ZERO: isAxiosVersionZero
 			};
 
 			if (!fs.existsSync(serviceDirectory)) {
@@ -194,10 +200,37 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 				if (schema.allOf) {
 					schema = unifyModel(allSchemas, schema.allOf);
 				}
-				return {
-					MODEL_NAME: pascalCase(schemaName),
-					MODEL_DESCRIPTION: schema.description,
-					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
+
+				let properties;
+
+				// conditionally parse an array schema based off how it is defined 
+				if (schema.type === "array" && schema.items) {
+					if (schema.items.type === "object") {
+						// the schema explicitly defines each property of the array object
+						properties = _.map(schema.items.properties, (property, propertyName) => {
+							return {
+								PROPERTY_NAME: propertyName,
+								MODEL_DESCRIPTION: property.description,
+								PROPERTY_TYPE: translateDataType(property),
+								PROPERTY_OPTIONAL: !_.includes(schema.items.required, propertyName),
+								PROPERTY_READONLY: property.readOnly
+							};
+						});
+					} else {
+						// the schema references another component via $ref and does not explicitly define it
+						properties = {
+							PROPERTY_NAME: getSchemaName(schema.items.$ref),
+							MODEL_DESCRIPTION: schema.description,
+							PROPERTY_TYPE: translateDataType(schema.items),
+							PROPERTY_OPTIONAL: !_.includes(schema.required, getSchemaName(schema.items.$ref)),
+							PROPERTY_READONLY: schema.readOnly
+						};
+					}
+				} else {
+					properties = _.map(schema.properties, (property, propertyName) => {
+						console.log("properties: ", schema.properties);
+						console.log("property: ", property);
+						console.log("propertyName: ", propertyName);
 						return {
 							PROPERTY_NAME: propertyName,
 							MODEL_DESCRIPTION: property.description,
@@ -205,7 +238,13 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							PROPERTY_OPTIONAL: !_.includes(schema.required, propertyName),
 							PROPERTY_READONLY: property.readOnly
 						};
-					})
+					});
+				}
+
+				return {
+					MODEL_NAME: pascalCase(schemaName),
+					MODEL_DESCRIPTION: schema.description,
+					MODEL_PROPERTIES: properties
 				};
 			})
 			.value();
@@ -490,6 +529,7 @@ function translateDataType(schema, isForeignReference = false) {
 	} else if (schema.type === "integer") {
 		propertyType = "number";
 	} else if (schema.type === "array") {
+		console.log("schema is an array: ", schema);
 		if (!schema.items.type) {
 			propertyType = `Array<${translateDataType(schema.items, isForeignReference)}>`;
 		} else {
@@ -529,6 +569,7 @@ function translateFieldType(schemas, schema) {
 
 	if (!schema.type && schema.$ref) {
 		const externalSchema = schemas[getSchemaName(schema.$ref)];
+
 		fieldType = translateFieldType(schemas, externalSchema);
 	} else if (schema.enum) {
 		fieldType = "ENUM";
