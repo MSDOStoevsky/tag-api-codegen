@@ -20,7 +20,21 @@ const BAD_YAML_MESSAGE =
  * @returns a string in PascalCase
  */
 const pascalCase = (string) => {
-	return _.upperFirst(_.camelCase(string));
+    // First, split the string into words using "look-ahead" & remove whitespace
+    const words = string.split(/(?=[A-Z])|[\s-_]+/).filter(word => word.length > 0);
+    
+    return words.map((word, index) => {
+        if (word.toUpperCase() === word && word.length > 1) {
+            // If the word is all uppercase and more than one character, assume it's an acronym
+            return word;
+        } else if (index === 0 || word.length > 1) {
+            // Capitalize the first letter, lowercase the rest, unless it's a single character
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        } else {
+            // For single characters (except the first word), just uppercase
+            return word.toUpperCase();
+        }
+    }).join('');
 };
 
 /**
