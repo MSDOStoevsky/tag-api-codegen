@@ -21,7 +21,7 @@ const BAD_YAML_MESSAGE =
  * @returns a string in PascalCase
  */
 const pascalCase = (string) => {
-	return _.words(str, /[A-Z]+(?=[A-Z][a-z]|\d|\W)|[A-Z]?[a-z]+|\d+|[A-Z]+/g)
+	return _.words(string, /[A-Z]+(?=[A-Z][a-z]|\d|\W)|[A-Z]?[a-z]+|\d+|[A-Z]+/g)
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join("");
 };
@@ -173,57 +173,49 @@ exports.generate = async (
 		});
 	});
 
+	// Helper function to create property objects
+	function createPropertyObject(propertyName, property, schema, isArray = false) {
+		return {
+			PROPERTY_NAME: propertyName,
+			MODEL_DESCRIPTION: property.description,
+			PROPERTY_TYPE: translateDataType(property),
+			PROPERTY_OPTIONAL: !_.includes(
+				isArray ? schema.items.required : schema.required,
+				propertyName
+			),
+			PROPERTY_READONLY: property.readOnly
+		};
+	}
+
 	// Generate all types for models.
 	fs.readFile("./templates/apiModelTypes.mustache", (error, data) => {
 		const allSchemas = openApiFile.components.schemas;
 
 		const models = _(allSchemas)
-			.pickBy((schema) => {
-				return !schema.enum;
-			})
-			.pickBy((schema) => {
-				return !schema.oneOf;
-			})
+			.pickBy((schema) => !schema.enum && !schema.oneOf)
 			.map((schema, schemaName) => {
 				if (schema.allOf) {
 					schema = unifyModel(allSchemas, schema.allOf);
 				}
-
 				let properties;
-
 				if (schema.type === "array" && schema.items) {
-					// conditionally parse an array schema based off how it is defined
 					if (schema.items.type === "object" && schema.items.properties) {
-						properties = _.map(schema.items.properties, (property, propertyName) => {
-							return {
-								PROPERTY_NAME: propertyName,
-								MODEL_DESCRIPTION: property.description,
-								PROPERTY_TYPE: translateDataType(property),
-								PROPERTY_OPTIONAL: !_.includes(schema.items.required, propertyName),
-								PROPERTY_READONLY: property.readOnly
-							};
-						});
+						properties = _.map(schema.items.properties, (property, propertyName) =>
+							createPropertyObject(propertyName, property, schema, true)
+						);
 					} else {
-						// the schema references another component via $ref and does not explicitly define it
 						const referencedSchemaName = getSchemaName(schema.items.$ref);
-						properties = {
-							PROPERTY_NAME: referencedSchemaName,
-							MODEL_DESCRIPTION: schema.description,
-							PROPERTY_TYPE: translateDataType(schema.items),
-							PROPERTY_OPTIONAL: !_.includes(schema.required, referencedSchemaName),
-							PROPERTY_READONLY: schema.readOnly
-						};
+						properties = createPropertyObject(
+							referencedSchemaName,
+							schema.items,
+							schema,
+							true
+						);
 					}
 				} else {
-					properties = _.map(schema.properties, (property, propertyName) => {
-						return {
-							PROPERTY_NAME: propertyName,
-							MODEL_DESCRIPTION: property.description,
-							PROPERTY_TYPE: translateDataType(property),
-							PROPERTY_OPTIONAL: !_.includes(schema.required, propertyName),
-							PROPERTY_READONLY: property.readOnly
-						};
-					});
+					properties = _.map(schema.properties, (property, propertyName) =>
+						createPropertyObject(propertyName, property, schema)
+					);
 				}
 
 				return {
