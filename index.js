@@ -21,22 +21,8 @@ const BAD_YAML_MESSAGE =
  * @returns a string in PascalCase
  */
 const pascalCase = (string) => {
-	// First, split the string into words using "look-ahead" & remove whitespace
-	const words = string.split(/(?=[A-Z])|[\s-_]+/).filter((word) => word.length > 0);
-
-	return words
-		.map((word, index) => {
-			if (word.toUpperCase() === word && word.length > 1) {
-				// If the word is all uppercase and more than one character, assume it's an acronym
-				return word;
-			} else if (index === 0 || word.length > 1) {
-				// Capitalize the first letter, lowercase the rest, unless it's a single character
-				return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-			} else {
-				// For single characters (except the first word), just uppercase
-				return word.toUpperCase();
-			}
-		})
+	return _.words(str, /[A-Z]+(?=[A-Z][a-z]|\d|\W)|[A-Z]?[a-z]+|\d+|[A-Z]+/g)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join("");
 };
 
@@ -205,7 +191,6 @@ exports.generate = async (
 
 				let properties;
 
-			
 				if (schema.type === "array" && schema.items) {
 					// conditionally parse an array schema based off how it is defined
 					if (schema.items.type === "object" && schema.items.properties) {
@@ -225,10 +210,7 @@ exports.generate = async (
 							PROPERTY_NAME: referencedSchemaName,
 							MODEL_DESCRIPTION: schema.description,
 							PROPERTY_TYPE: translateDataType(schema.items),
-							PROPERTY_OPTIONAL: !_.includes(
-								schema.required,
-								referencedSchemaName
-							),
+							PROPERTY_OPTIONAL: !_.includes(schema.required, referencedSchemaName),
 							PROPERTY_READONLY: schema.readOnly
 						};
 					}
@@ -323,7 +305,6 @@ exports.generate = async (
 
 				let properties;
 
-				
 				if (schema.type === "array" && schema.items) {
 					// conditionally parse an array schema based off how it is defined
 					if (schema.items.$ref) {
@@ -334,7 +315,10 @@ exports.generate = async (
 							PROPERTY_TYPE: translateFieldType(allSchemas, schema.items),
 							PROPERTY_OPTIONS: getEnumEntries(allSchemas, schema.items),
 							PROPERTY_DESCRIPTION: schema.description,
-							PROPERTY_REQUIRED: _.includes(schema.items.required, referencedSchemaName),
+							PROPERTY_REQUIRED: _.includes(
+								schema.items.required,
+								referencedSchemaName
+							),
 							PROPERTY_UNITS: schema.items["x-ada-units"],
 							PROPERTY_FORMAT: schema.items.format,
 							PROPERTY_DEFAULT:
@@ -342,9 +326,7 @@ exports.generate = async (
 							PROPERTY_MINIMUM: schema.items.minimum || schema.items.minLength,
 							PROPERTY_MAXIMUM: schema.items.maximum || schema.items.maxLength
 						};
-
 					} else if (schema.items.type === "object" && schema.items.properties) {
-
 						properties = _.map(schema.items.properties, (property, propertyName) => {
 							return {
 								PROPERTY_NAME: propertyName,
@@ -361,7 +343,7 @@ exports.generate = async (
 							};
 						});
 					}
-				} else { 
+				} else {
 					properties = _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
@@ -371,8 +353,7 @@ exports.generate = async (
 							PROPERTY_REQUIRED: _.includes(schema.required, propertyName),
 							PROPERTY_UNITS: property["x-ada-units"],
 							PROPERTY_FORMAT: property.format,
-							PROPERTY_DEFAULT:
-								property.default || generateDefaultValue(property),
+							PROPERTY_DEFAULT: property.default || generateDefaultValue(property),
 							PROPERTY_MINIMUM: property.minimum || property.minLength,
 							PROPERTY_MAXIMUM: property.maximum || property.maxLength
 						};
