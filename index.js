@@ -16,11 +16,14 @@ const BAD_YAML_MESSAGE =
  * @example test -> Test
  * @example test text -> TestText
  * @example test-text -> TestText
+ * @example TESTTest -> TESTTest
  * @param {string} string - input string
  * @returns a string in PascalCase
  */
 const pascalCase = (string) => {
-	return _.upperFirst(_.camelCase(string));
+	return _.words(string, /[A-Z]+(?=[A-Z][a-z]|\d|\W)|[A-Z]?[a-z]+|\d+|[A-Z]+/g)
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join("");
 };
 
 /**
@@ -29,8 +32,15 @@ const pascalCase = (string) => {
  * @param {string} outputDirectory - desired output directory for generated files.
  * @param {boolean} isApiMonolith - flag indicating whether to treat this api as monolithic.
  * @param {string} userProvidedServiceName - Optional service name for api file.
+ * @param {number} axiosVersion - Optional axios version to use.
  */
-exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvidedServiceName, axiosVersion = 0) => {
+exports.generate = async (
+	inputFile,
+	outputDirectory,
+	isApiMonolith,
+	userProvidedServiceName,
+	axiosVersion = 0
+) => {
 	const isAxiosVersionZero = axiosVersion < 1;
 	const serviceDirectoryName =
 		userProvidedServiceName && `${_.toLower(userProvidedServiceName)}Service`;
@@ -145,7 +155,7 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 						REQUEST_PATH: transformApiPath(pathConfig.path, pathConfig.parameters)
 					};
 				}),
-				IS_AXIOS_VERSION_ZERO: isAxiosVersionZero 
+				IS_AXIOS_VERSION_ZERO: isAxiosVersionZero
 			};
 
 			if (!fs.existsSync(serviceDirectory)) {
@@ -163,33 +173,55 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 		});
 	});
 
+	// Helper function to create property objects
+	function createPropertyObject(propertyName, property, schema, isArray = false) {
+		return {
+			PROPERTY_NAME: propertyName,
+			MODEL_DESCRIPTION: property.description,
+			PROPERTY_TYPE: translateDataType(property),
+			PROPERTY_OPTIONAL: !_.includes(
+				isArray ? schema.items.required : schema.required,
+				propertyName
+			),
+			PROPERTY_READONLY: property.readOnly
+		};
+	}
+
 	// Generate all types for models.
 	fs.readFile("./templates/apiModelTypes.mustache", (error, data) => {
 		const allSchemas = openApiFile.components.schemas;
 
 		const models = _(allSchemas)
-			.pickBy((schema) => {
-				return !schema.enum;
-			})
-			.pickBy((schema) => {
-				return !schema.oneOf;
-			})
+			.pickBy((schema) => !schema.enum && !schema.oneOf)
 			.map((schema, schemaName) => {
 				if (schema.allOf) {
 					schema = unifyModel(allSchemas, schema.allOf);
 				}
+				let properties;
+				if (schema.type === "array" && schema.items) {
+					if (schema.items.type === "object" && schema.items.properties) {
+						properties = _.map(schema.items.properties, (property, propertyName) =>
+							createPropertyObject(propertyName, property, schema, true)
+						);
+					} else {
+						const referencedSchemaName = getSchemaName(schema.items.$ref);
+						properties = createPropertyObject(
+							referencedSchemaName,
+							schema.items,
+							schema,
+							true
+						);
+					}
+				} else {
+					properties = _.map(schema.properties, (property, propertyName) =>
+						createPropertyObject(propertyName, property, schema)
+					);
+				}
+
 				return {
 					MODEL_NAME: pascalCase(schemaName),
 					MODEL_DESCRIPTION: schema.description,
-					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
-						return {
-							PROPERTY_NAME: propertyName,
-							MODEL_DESCRIPTION: property.description,
-							PROPERTY_TYPE: translateDataType(property),
-							PROPERTY_OPTIONAL: !_.includes(schema.required, propertyName),
-							PROPERTY_READONLY: property.readOnly
-						};
-					})
+					MODEL_PROPERTIES: properties
 				};
 			})
 			.value();
@@ -262,10 +294,49 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 				if (schema.allOf) {
 					schema = unifyModel(allSchemas, schema.allOf);
 				}
-				return {
-					MODEL_NAME: pascalCase(schemaName),
-					MODEL_DESCRIPTION: schema.description,
-					MODEL_PROPERTIES: _.map(schema.properties, (property, propertyName) => {
+
+				let properties;
+
+				if (schema.type === "array" && schema.items) {
+					// conditionally parse an array schema based off how it is defined
+					if (schema.items.$ref) {
+						// schema is referencing another component
+						const referencedSchemaName = getSchemaName(schema.items.$ref);
+						properties = {
+							PROPERTY_NAME: referencedSchemaName,
+							PROPERTY_TYPE: translateFieldType(allSchemas, schema.items),
+							PROPERTY_OPTIONS: getEnumEntries(allSchemas, schema.items),
+							PROPERTY_DESCRIPTION: schema.description,
+							PROPERTY_REQUIRED: _.includes(
+								schema.items.required,
+								referencedSchemaName
+							),
+							PROPERTY_UNITS: schema.items["x-ada-units"],
+							PROPERTY_FORMAT: schema.items.format,
+							PROPERTY_DEFAULT:
+								schema.items.default || generateDefaultValue(schema.items),
+							PROPERTY_MINIMUM: schema.items.minimum || schema.items.minLength,
+							PROPERTY_MAXIMUM: schema.items.maximum || schema.items.maxLength
+						};
+					} else if (schema.items.type === "object" && schema.items.properties) {
+						properties = _.map(schema.items.properties, (property, propertyName) => {
+							return {
+								PROPERTY_NAME: propertyName,
+								PROPERTY_TYPE: translateFieldType(allSchemas, property),
+								PROPERTY_OPTIONS: getEnumEntries(allSchemas, property),
+								PROPERTY_DESCRIPTION: property.description,
+								PROPERTY_REQUIRED: _.includes(schema.items.required, propertyName),
+								PROPERTY_UNITS: property["x-ada-units"],
+								PROPERTY_FORMAT: property.format,
+								PROPERTY_DEFAULT:
+									property.default || generateDefaultValue(property),
+								PROPERTY_MINIMUM: property.minimum || property.minLength,
+								PROPERTY_MAXIMUM: property.maximum || property.maxLength
+							};
+						});
+					}
+				} else {
+					properties = _.map(schema.properties, (property, propertyName) => {
 						return {
 							PROPERTY_NAME: propertyName,
 							PROPERTY_TYPE: translateFieldType(allSchemas, property),
@@ -278,7 +349,12 @@ exports.generate = async (inputFile, outputDirectory, isApiMonolith, userProvide
 							PROPERTY_MINIMUM: property.minimum || property.minLength,
 							PROPERTY_MAXIMUM: property.maximum || property.maxLength
 						};
-					})
+					});
+				}
+				return {
+					MODEL_NAME: pascalCase(schemaName),
+					MODEL_DESCRIPTION: schema.description,
+					MODEL_PROPERTIES: properties
 				};
 			})
 			.value();
@@ -513,6 +589,7 @@ function translateFieldType(schemas, schema) {
 
 	if (!schema.type && schema.$ref) {
 		const externalSchema = schemas[getSchemaName(schema.$ref)];
+
 		fieldType = translateFieldType(schemas, externalSchema);
 	} else if (schema.enum) {
 		fieldType = "ENUM";

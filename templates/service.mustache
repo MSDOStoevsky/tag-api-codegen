@@ -5,7 +5,7 @@
 /* eslint-disable  @typescript-eslint/no-empty-interface */
 /* eslint-disable  @typescript-eslint/no-unused-vars */
 import * as ApiModelTypes from "{{{TYPES_DIRECTORY}}}";
-import axios, { AxiosResponse, CancelToken{{^IS_AXIOS_VERSION_ZERO}}, RawAxiosRequestHeaders{{/IS_AXIOS_VERSION_ZERO}} } from "axios";
+import axios, { AxiosResponse{{#IS_AXIOS_VERSION_ZERO}}, CancelToken{{/IS_AXIOS_VERSION_ZERO}}{{^IS_AXIOS_VERSION_ZERO}}, RawAxiosRequestHeaders{{/IS_AXIOS_VERSION_ZERO}} } from "axios";
 
 /**
  * The service base path.
@@ -46,7 +46,7 @@ export interface {{FUNCTION_NAME}}QueryParams {
  * @param params - The request parameters (or undefined).
  * @param payload - the request payload (or undefined).
  * @param headers - the request headers.
- * @param cancelToken - optional cancel token to cancel this request.
+ * @param {{#IS_AXIOS_VERSION_ZERO}}cancelToken - optional cancel token{{/IS_AXIOS_VERSION_ZERO}}{{^IS_AXIOS_VERSION_ZERO}}signal - optional AbortSignal{{/IS_AXIOS_VERSION_ZERO}} to cancel this request.
  * @param queryParameters - optional request query parameters (or undefined).
  * @param basePathOverride - optional override to the base path.
  * @returns api request configuration data.
@@ -55,7 +55,12 @@ export function {{FUNCTION_NAME}}(
 	params: {{^FUNCTION_PARAMS}}undefined{{/FUNCTION_PARAMS}}{{#FUNCTION_PARAMS}}{{FUNCTION_NAME}}Params{{/FUNCTION_PARAMS}},
 	payload: {{^FUNCTION_PAYLOAD}}undefined{{/FUNCTION_PAYLOAD}}{{#FUNCTION_PAYLOAD}}{{{.}}}{{/FUNCTION_PAYLOAD}},
 	headers: {{^IS_AXIOS_VERSION_ZERO}}RawAxiosRequestHeaders{{/IS_AXIOS_VERSION_ZERO}}{{#IS_AXIOS_VERSION_ZERO}}Record<string, unknown>{{/IS_AXIOS_VERSION_ZERO}},
+	{{#IS_AXIOS_VERSION_ZERO}}
 	cancelToken?: CancelToken,
+	{{/IS_AXIOS_VERSION_ZERO}}
+	{{^IS_AXIOS_VERSION_ZERO}}
+	signal?: AbortSignal,
+	{{/IS_AXIOS_VERSION_ZERO}}	
 	queryParameters?: {{#QUERY_PARAMS}}{{FUNCTION_NAME}}QueryParams{{/QUERY_PARAMS}} | undefined,
 	basePathOverride?: string
 ): Promise<AxiosResponse<{{{FUNCTION_RESPONSE}}}>> {
@@ -66,7 +71,12 @@ export function {{FUNCTION_NAME}}(
 		method: "{{REQUEST_METHOD}}",
 		params: queryParameters,
 		data: payload,
+		{{#IS_AXIOS_VERSION_ZERO}}
 		cancelToken: cancelToken
+		{{/IS_AXIOS_VERSION_ZERO}}
+		{{^IS_AXIOS_VERSION_ZERO}}
+		signal: signal
+		{{/IS_AXIOS_VERSION_ZERO}}	
 	});
 }
 {{/FUNCTIONS}}
